@@ -31,21 +31,31 @@ MVP scope:
 
 ## Commands
 
-> Filled in as the skeleton lands (Step 1). Keep this section accurate.
+Requires JDK 21 (`JAVA_HOME` pointing at it) and a running Docker daemon.
 
 ```bash
-docker compose up -d          # start PostgreSQL
-./mvnw spring-boot:run        # run the app
-./mvnw verify                 # full build + all tests (needs Docker running)
-./mvnw test -Dtest=ClassName  # single test class
+cp .env.example .env              # once; local-dev defaults
+docker compose up -d              # PostgreSQL 17 on localhost:5433
+./mvnw spring-boot:run            # run the app (http://localhost:8080)
+./mvnw verify                     # lint + full build + all tests (needs Docker)
+./mvnw test -Dtest=ClassName      # single test class
+./mvnw spotless:apply             # auto-format (google-java-format)
+./mvnw spotless:check             # lint only (also bound to `validate`)
 ```
+
+- Health: `GET /actuator/health`, `/actuator/info`, `/actuator/prometheus`.
+- Integration tests `@Import(TestcontainersConfiguration.class)`; don't start
+  containers per test class.
+- With Colima, Testcontainers needs
+  `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock` and
+  `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock` (see README).
 
 ## Package layout
 
 Package by feature, not by layer:
 
 ```
-com.<org>.invoicing
+io.github.dimasnurfauzi.invoicing
 ├── tenant/      # tenant registration, TenantContext, tenant filter
 ├── auth/        # JWT, login, security config
 ├── customer/
