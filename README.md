@@ -28,10 +28,38 @@ problems that come up. Each PR description records both.
 Java 21 · Spring Boot 3 · Spring Security + JWT · PostgreSQL · Flyway ·
 JUnit 5 + Testcontainers · Docker Compose · GitHub Actions · Actuator + Micrometer
 
+## Running locally
+
+Prerequisites: JDK 21, Docker.
+
+```bash
+cp .env.example .env
+docker compose up -d        # PostgreSQL 17 on localhost:5433
+./mvnw spring-boot:run
+curl localhost:8080/actuator/health
+./mvnw verify               # Spotless lint + tests (Testcontainers)
+```
+
+PostgreSQL is published on host port **5433** (not 5432) so it can run next
+to another local PostgreSQL. Override with `POSTGRES_PORT` / `DB_URL` in `.env`.
+
+### Docker via Colima (macOS)
+
+Testcontainers looks for `/var/run/docker.sock` by default. With Colima,
+point it at Colima's socket before running tests:
+
+```bash
+export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+```
+
+(Or put `docker.host=unix:///Users/<you>/.colima/default/docker.sock` in
+`~/.testcontainers.properties`.)
+
 ## Roadmap
 
 - [x] Step 0 — repo, agent guide (`CLAUDE.md`), PR template
-- [ ] Step 1 — skeleton, Docker Compose, health endpoint, Testcontainers, CI
+- [x] Step 1 — skeleton, Docker Compose, health endpoint, Testcontainers, CI
 - [ ] Week 1 — tenants, users, JWT auth, centralized tenant filter, isolation tests
 - [ ] Week 2 — customers, invoices, line items, tax, discount
 - [ ] Week 3 — partial payments, invoice numbering, overdue job

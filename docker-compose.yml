@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: invoicing-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-invoicing}
+      POSTGRES_USER: ${POSTGRES_USER:-invoicing}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-invoicing}
+    ports:
+      # 5433 on the host so it doesn't clash with another local PostgreSQL on 5432.
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - invoicing-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  invoicing-pgdata:
