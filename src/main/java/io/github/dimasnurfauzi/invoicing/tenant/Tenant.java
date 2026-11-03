@@ -2,6 +2,8 @@ package io.github.dimasnurfauzi.invoicing.tenant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;
@@ -32,6 +34,14 @@ public class Tenant implements Persistable<UUID> {
   @Column(nullable = false, length = 63, unique = true)
   private String slug;
 
+  /** Set by a platform admin. A suspended tenant can't log in and its tokens are rejected. */
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 10)
+  private TenantStatus status = TenantStatus.ACTIVE;
+
+  @Column(name = "suspended_at")
+  private Instant suspendedAt;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -61,6 +71,31 @@ public class Tenant implements Persistable<UUID> {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  public TenantStatus getStatus() {
+    return status;
+  }
+
+  public Instant getSuspendedAt() {
+    return suspendedAt;
+  }
+
+  public boolean isActive() {
+    return status == TenantStatus.ACTIVE;
+  }
+
+  /** Idempotent: suspending a suspended tenant keeps the original timestamp. */
+  public void suspend(Instant now) {
+    if (status != TenantStatus.SUSPENDED) {
+      status = TenantStatus.SUSPENDED;
+      suspendedAt = now;
+    }
+  }
+
+  public void activate() {
+    status = TenantStatus.ACTIVE;
+    suspendedAt = null;
   }
 
   @Override

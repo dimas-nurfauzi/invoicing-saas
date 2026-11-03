@@ -2,6 +2,7 @@ package io.github.dimasnurfauzi.invoicing.auth;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.UUID;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -9,7 +10,11 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
-/** Issues access tokens. Claims: sub (user id), tenant_id, role, iss, iat, exp. No PII. */
+/**
+ * Issues access tokens. Tenant tokens: sub (user id), tenant_id, role. Platform admin tokens: sub
+ * (admin id), role PLATFORM_ADMIN, scope platform, and no tenant_id. Both carry iss, iat, exp and
+ * no PII.
+ */
 @Service
 public class JwtService {
 
@@ -24,18 +29,31 @@ public class JwtService {
   }
 
   public String issue(User user) {
-    Instant now = clock.instant();
-    JwtClaimsSet claims =
-        JwtClaimsSet.builder()
-            .issuer(props.issuer())
-            .subject(user.getId().toString())
+    return encode(
+        baseClaims(user.getId())
             .claim(JwtClaims.TENANT_ID, user.getTenantId().toString())
-            .claim(JwtClaims.ROLE, user.getRole().name())
-            .issuedAt(now)
-            .expiresAt(now.plus(props.ttl()))
-            .build();
+            .claim(JwtClaims.ROLE, user.getRole().name()));
+  }
+
+  public String issuePlatformAdmin(UUID adminId) {
+    return encode(
+        baseClaims(adminId)
+            .claim(JwtClaims.ROLE, JwtClaims.PLATFORM_ADMIN_ROLE)
+            .claim(JwtClaims.SCOPE, JwtClaims.PLATFORM_SCOPE));
+  }
+
+  private JwtClaimsSet.Builder baseClaims(UUID subject) {
+    Instant now = clock.instant();
+    return JwtClaimsSet.builder()
+        .issuer(props.issuer())
+        .subject(subject.toString())
+        .issuedAt(now)
+        .expiresAt(now.plus(props.ttl()));
+  }
+
+  private String encode(JwtClaimsSet.Builder claims) {
     JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-    return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+    return encoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
   }
 
   public long ttlSeconds() {

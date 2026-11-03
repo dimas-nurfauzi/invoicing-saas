@@ -2,3 +2,6 @@
 app:
   jwt:
     secret: test-only-jwt-secret-0123456789abcdef0123456789
+  platform-admin:
+    email: platform-admin@test.local
+    password: platform-test-password

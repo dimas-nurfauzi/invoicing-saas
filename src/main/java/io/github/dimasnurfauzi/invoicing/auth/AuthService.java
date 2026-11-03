@@ -1,7 +1,9 @@
 package io.github.dimasnurfauzi.invoicing.auth;
 
+import io.github.dimasnurfauzi.invoicing.tenant.Tenant;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantContext;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantRepository;
+import io.github.dimasnurfauzi.invoicing.tenant.TenantSuspendedException;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,16 +41,18 @@ public class AuthService {
    */
   public LoginResponse login(LoginRequest request) {
     String email = request.email().trim().toLowerCase(Locale.ROOT);
+    Optional<Tenant> tenant = tenants.findBySlug(request.tenantSlug());
     Optional<User> user =
-        tenants
-            .findBySlug(request.tenantSlug())
-            .flatMap(
-                tenant -> TenantContext.callAs(tenant.getId(), () -> users.findByEmail(email)));
+        tenant.flatMap(t -> TenantContext.callAs(t.getId(), () -> users.findByEmail(email)));
 
     String hash = user.map(User::getPasswordHash).orElse(dummyHash);
     boolean passwordMatches = passwordEncoder.matches(request.password(), hash);
     if (user.isEmpty() || !passwordMatches) {
       throw new InvalidCredentialsException();
+    }
+    // Only after valid credentials, so suspension isn't revealed to someone guessing.
+    if (!tenant.get().isActive()) {
+      throw new TenantSuspendedException();
     }
     return LoginResponse.bearer(jwtService.issue(user.get()), jwtService.ttlSeconds());
   }

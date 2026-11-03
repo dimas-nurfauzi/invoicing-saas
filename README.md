@@ -66,6 +66,23 @@ curl -X POST localhost:8080/api/users -H "Authorization: Bearer <accessToken>" \
   -d '{"email":"staff@tokomaju.id","password":"rahasia-456","role":"STAFF"}'
 ```
 
+## Platform admin
+
+The SaaS operator has a separate account type (not a tenant role). Set
+`PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD` (12+ chars) and the first
+admin is created at startup. `POST /api/platform/auth/login` returns a platform
+token that works only under `/api/platform/**`:
+
+- list / view tenants, create a tenant (also when `TENANT_SIGNUP_ENABLED=false`)
+- suspend / activate a tenant: a suspended tenant can't log in and its existing
+  tokens are rejected immediately
+
+Platform admins can't read tenant business data, and tenant tokens can't call
+the platform API.
+
+Every response carries an `X-Request-Id`; log lines include `req=`, `tenant=`
+and `user=` so a support ticket can be traced without opening tenant data.
+
 ## Multi-tenancy
 
 The tenant comes only from the signed JWT (`tenant_id` claim), never from the

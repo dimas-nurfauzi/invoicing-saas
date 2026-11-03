@@ -25,7 +25,7 @@ class InvoicingApplicationTests {
   void flywayAppliedAllMigrations() {
     assertThat(flyway.info().applied())
         .extracting(migration -> migration.getVersion().getVersion())
-        .containsExactly("1", "2");
+        .containsExactly("1", "2", "3");
   }
 
   @Test
