@@ -13,6 +13,13 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+app:
+  jwt:
+    # Required, no default: HMAC-SHA256 key, at least 32 bytes. See .env.example.
+    secret: ${JWT_SECRET}
+    ttl: ${JWT_TTL:PT1H}
+    issuer: invoicing-saas
+
 management:
   endpoints:
     web:

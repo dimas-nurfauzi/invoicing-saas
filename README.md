@@ -35,9 +35,25 @@ Prerequisites: JDK 21, Docker.
 ```bash
 cp .env.example .env
 docker compose up -d        # PostgreSQL 17 on localhost:5433
+set -a; source .env; set +a # export JWT_SECRET etc. into this shell
 ./mvnw spring-boot:run
 curl localhost:8080/actuator/health
 ./mvnw verify               # Spotless lint + tests (Testcontainers)
+```
+
+`JWT_SECRET` is required (at least 32 bytes); the app refuses to start
+without it. The app does not read `.env` itself, so export it first — or,
+in IntelliJ, add `JWT_SECRET=...` under Run Configuration → Environment
+variables. Tests use their own value from `src/test/resources/application-test.yml`.
+
+### Trying the API
+
+```bash
+curl -X POST localhost:8080/api/tenants -H 'Content-Type: application/json' \
+  -d '{"tenantName":"Toko Maju","tenantSlug":"toko-maju","adminEmail":"owner@tokomaju.id","adminPassword":"rahasia-123"}'
+curl -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"tenantSlug":"toko-maju","email":"owner@tokomaju.id","password":"rahasia-123"}'
+curl localhost:8080/api/me -H "Authorization: Bearer <accessToken>"
 ```
 
 PostgreSQL is published on host port **5433** (not 5432) so it can run next

@@ -10,9 +10,11 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
+@ActiveProfiles("test")
 class InvoicingApplicationTests {
 
   @Autowired TestRestTemplate rest;
@@ -32,5 +34,13 @@ class InvoicingApplicationTests {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).contains("\"status\":\"UP\"");
+  }
+
+  @Test
+  void otherActuatorEndpointsRequireAuthentication() {
+    assertThat(rest.getForEntity("/actuator/info", String.class).getStatusCode())
+        .isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(rest.getForEntity("/actuator/prometheus", String.class).getStatusCode())
+        .isEqualTo(HttpStatus.UNAUTHORIZED);
   }
 }

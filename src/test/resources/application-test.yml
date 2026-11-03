@@ -1,0 +1,4 @@
+# Activated with @ActiveProfiles("test"). Test-only values; not secrets.
+app:
+  jwt:
+    secret: test-only-jwt-secret-0123456789abcdef0123456789

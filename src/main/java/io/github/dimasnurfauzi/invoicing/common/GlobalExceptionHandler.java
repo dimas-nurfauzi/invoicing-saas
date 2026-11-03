@@ -1,5 +1,6 @@
 package io.github.dimasnurfauzi.invoicing.common;
 
+import io.github.dimasnurfauzi.invoicing.auth.InvalidCredentialsException;
 import io.github.dimasnurfauzi.invoicing.tenant.SlugAlreadyTakenException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -17,5 +18,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(SlugAlreadyTakenException.class)
   ProblemDetail handleSlugTaken(SlugAlreadyTakenException e) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+  }
+
+  @ExceptionHandler(InvalidCredentialsException.class)
+  ProblemDetail handleInvalidCredentials(InvalidCredentialsException e) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, e.getMessage());
   }
 }
