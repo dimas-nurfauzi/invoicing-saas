@@ -20,10 +20,10 @@ class InvoicingApplicationTests {
   @Autowired Flyway flyway;
 
   @Test
-  void flywayAppliedBaselineMigration() {
+  void flywayAppliedAllMigrations() {
     assertThat(flyway.info().applied())
         .extracting(migration -> migration.getVersion().getVersion())
-        .containsExactly("1");
+        .containsExactly("1", "2");
   }
 
   @Test

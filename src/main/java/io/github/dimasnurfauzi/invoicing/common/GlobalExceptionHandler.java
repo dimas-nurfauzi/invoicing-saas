@@ -1,0 +1,21 @@
+package io.github.dimasnurfauzi.invoicing.common;
+
+import io.github.dimasnurfauzi.invoicing.tenant.SlugAlreadyTakenException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+/**
+ * RFC 9457 problem responses. Validation errors (400) come from {@link
+ * ResponseEntityExceptionHandler}; feature-specific errors are mapped here.
+ */
+@RestControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+  @ExceptionHandler(SlugAlreadyTakenException.class)
+  ProblemDetail handleSlugTaken(SlugAlreadyTakenException e) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+  }
+}
