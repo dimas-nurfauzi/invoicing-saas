@@ -36,6 +36,7 @@ Requires JDK 21 (`JAVA_HOME` pointing at it) and a running Docker daemon.
 ```bash
 cp .env.example .env              # once; local-dev defaults
 docker compose up -d              # PostgreSQL 17 on localhost:5433
+set -a; source .env; set +a       # export env (JWT_SECRET is required)
 ./mvnw spring-boot:run            # run the app (http://localhost:8080)
 ./mvnw verify                     # lint + full build + all tests (needs Docker)
 ./mvnw test -Dtest=ClassName      # single test class
@@ -44,8 +45,8 @@ docker compose up -d              # PostgreSQL 17 on localhost:5433
 ```
 
 - Health: `GET /actuator/health`, `/actuator/info`, `/actuator/prometheus`.
-- Integration tests `@Import(TestcontainersConfiguration.class)`; don't start
-  containers per test class.
+- Integration tests `@Import(TestcontainersConfiguration.class)` and
+  `@ActiveProfiles("test")` (test JWT secret); don't start containers per test class.
 - With Colima, Testcontainers needs
   `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock` and
   `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock` (see README).
