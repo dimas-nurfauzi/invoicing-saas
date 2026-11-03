@@ -52,6 +52,10 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**")
                 .permitAll()
+                // API docs; switched off entirely with SPRINGDOC_ENABLED=false (then they 404).
+                .requestMatchers(
+                    HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                .permitAll()
                 // Error dispatches for permitted requests (e.g. 400s rendered by Boot).
                 .requestMatchers("/error")
                 .permitAll()

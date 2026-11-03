@@ -48,6 +48,12 @@ variables. Tests use their own value from `src/test/resources/application-test.y
 
 ### Trying the API
 
+Swagger UI: <http://localhost:8080/swagger-ui.html> (spec at `/v3/api-docs`).
+Register a tenant, call login, click **Authorize** and paste the `accessToken`.
+Disable both in production with `SPRINGDOC_ENABLED=false`.
+
+Or with curl:
+
 ```bash
 curl -X POST localhost:8080/api/tenants -H 'Content-Type: application/json' \
   -d '{"tenantName":"Toko Maju","tenantSlug":"toko-maju","adminEmail":"owner@tokomaju.id","adminPassword":"rahasia-123"}'

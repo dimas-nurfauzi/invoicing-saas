@@ -1,5 +1,6 @@
 package io.github.dimasnurfauzi.invoicing.auth;
 
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -50,14 +51,15 @@ public class UserController {
   public UserResponse changeRole(
       @PathVariable UUID id,
       @Valid @RequestBody UpdateUserRoleRequest request,
-      @AuthenticationPrincipal Jwt jwt) {
+      @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
     return userService.changeRole(id, request.role(), UUID.fromString(jwt.getSubject()));
   }
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @PreAuthorize("hasRole('ADMIN')")
-  public void delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+  public void delete(
+      @PathVariable UUID id, @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
     userService.delete(id, UUID.fromString(jwt.getSubject()));
   }
 }

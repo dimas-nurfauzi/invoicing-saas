@@ -21,6 +21,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <spotless.version>3.10.4</spotless.version>
         <google-java-format.version>2.0.0</google-java-format.version>
+        <springdoc.version>2.8.17</springdoc.version>
     </properties>
 
     <dependencies>
@@ -47,6 +48,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
