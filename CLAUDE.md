@@ -64,7 +64,8 @@ io.github.dimasnurfauzi.invoicing
 ├── payment/
 ├── summary/
 ├── ai/          # Claude API client, schema validation, draft extraction
-└── common/      # errors, money helpers, base entities
+├── platform/    # platform admin (SaaS operator): login, tenant list/suspend
+└── common/      # errors, money helpers, base entities, request id
 ```
 
 Each feature: `Controller` → `Service` → `Repository`. DTOs at the controller
@@ -99,6 +100,17 @@ How it's implemented (Hibernate partitioned multi-tenancy):
   tenant-owned tables in main code (tests may, to assert raw DB state).
 - `TenantSchemaGuardTests` fails if an entity maps `tenant_id` without
   `@TenantId`, or a `tenant_id` column is nullable or unindexed.
+
+### Platform admin
+- Platform admins (`platform_admins`, no `tenant_id`) are the SaaS operator,
+  not a tenant role. Their tokens carry `scope=platform` and no `tenant_id`.
+- `/api/platform/**` has its own security chain that accepts only platform
+  tokens; the tenant chain rejects tokens with a `scope`. Keep it that way.
+- Platform endpoints work on the `tenants` table only. They never read tenant
+  business data and never bypass the tenant filter; support access to tenant
+  data must be explicit (tenant-granted, read-only, audited), not a bypass.
+- The first platform admin comes from `PLATFORM_ADMIN_EMAIL` /
+  `PLATFORM_ADMIN_PASSWORD` at startup; there is no default account.
 
 ### Money
 - Money is `BigDecimal` everywhere. Never `double`/`float`, never

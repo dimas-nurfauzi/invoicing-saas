@@ -19,6 +19,12 @@ app:
     secret: ${JWT_SECRET}
     ttl: ${JWT_TTL:PT1H}
     issuer: invoicing-saas
+  # Public self-service signup (POST /api/tenants). false = only platform admins create tenants.
+  tenant-signup-enabled: ${TENANT_SIGNUP_ENABLED:true}
+  # First platform admin, created at startup if both are set. No default account.
+  platform-admin:
+    email: ${PLATFORM_ADMIN_EMAIL:}
+    password: ${PLATFORM_ADMIN_PASSWORD:}
 
 springdoc:
   # Swagger UI at /swagger-ui.html, spec at /v3/api-docs. Set SPRINGDOC_ENABLED=false in production.
@@ -27,6 +33,11 @@ springdoc:
   swagger-ui:
     enabled: ${SPRINGDOC_ENABLED:true}
     persist-authorization: true
+
+logging:
+  pattern:
+    # request_id / tenant_id / user_id from the MDC on every line (RequestIdFilter, TenantContextFilter).
+    level: "%5p [req=%X{request_id:-} tenant=%X{tenant_id:-} user=%X{user_id:-}]"
 
 management:
   endpoints:
