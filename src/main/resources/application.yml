@@ -20,6 +20,14 @@ app:
     ttl: ${JWT_TTL:PT1H}
     issuer: invoicing-saas
 
+springdoc:
+  # Swagger UI at /swagger-ui.html, spec at /v3/api-docs. Set SPRINGDOC_ENABLED=false in production.
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:true}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:true}
+    persist-authorization: true
+
 management:
   endpoints:
     web:

@@ -1,12 +1,12 @@
 package io.github.dimasnurfauzi.invoicing.auth;
 
+import io.github.dimasnurfauzi.invoicing.tenant.TenantContext;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantRepository;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -32,16 +32,18 @@ public class AuthService {
   }
 
   /**
-   * Pre-authentication lookup: there is no tenant context yet, so the tenant is resolved from the
-   * public slug. This is the one intended path that reads users without the tenant filter.
+   * Pre-authentication: there is no token yet, so the tenant is resolved from the public slug, and
+   * the user lookup then runs inside that tenant through the normal tenant filter. Not
+   * {@code @Transactional} on purpose: each repository call opens its own session after the tenant
+   * context it needs is set.
    */
-  @Transactional(readOnly = true)
   public LoginResponse login(LoginRequest request) {
     String email = request.email().trim().toLowerCase(Locale.ROOT);
     Optional<User> user =
         tenants
             .findBySlug(request.tenantSlug())
-            .flatMap(tenant -> users.findByTenantIdAndEmail(tenant.getId(), email));
+            .flatMap(
+                tenant -> TenantContext.callAs(tenant.getId(), () -> users.findByEmail(email)));
 
     String hash = user.map(User::getPasswordHash).orElse(dummyHash);
     boolean passwordMatches = passwordEncoder.matches(request.password(), hash);

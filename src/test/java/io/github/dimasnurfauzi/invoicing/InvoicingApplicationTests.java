@@ -43,4 +43,17 @@ class InvoicingApplicationTests {
     assertThat(rest.getForEntity("/actuator/prometheus", String.class).getStatusCode())
         .isEqualTo(HttpStatus.UNAUTHORIZED);
   }
+
+  @Test
+  void apiDocsArePublicAndDeclareBearerAuth() {
+    ResponseEntity<String> docs = rest.getForEntity("/v3/api-docs", String.class);
+
+    assertThat(docs.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(docs.getBody())
+        .contains("\"bearerAuth\"")
+        .contains("/api/auth/login")
+        .contains("/api/users/{id}");
+    assertThat(rest.getForEntity("/swagger-ui/index.html", String.class).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+  }
 }

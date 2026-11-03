@@ -48,13 +48,32 @@ variables. Tests use their own value from `src/test/resources/application-test.y
 
 ### Trying the API
 
+Swagger UI: <http://localhost:8080/swagger-ui.html> (spec at `/v3/api-docs`).
+Register a tenant, call login, click **Authorize** and paste the `accessToken`.
+Disable both in production with `SPRINGDOC_ENABLED=false`.
+
+Or with curl:
+
 ```bash
 curl -X POST localhost:8080/api/tenants -H 'Content-Type: application/json' \
   -d '{"tenantName":"Toko Maju","tenantSlug":"toko-maju","adminEmail":"owner@tokomaju.id","adminPassword":"rahasia-123"}'
 curl -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
   -d '{"tenantSlug":"toko-maju","email":"owner@tokomaju.id","password":"rahasia-123"}'
 curl localhost:8080/api/me -H "Authorization: Bearer <accessToken>"
+curl localhost:8080/api/users -H "Authorization: Bearer <accessToken>"
+curl -X POST localhost:8080/api/users -H "Authorization: Bearer <accessToken>" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"staff@tokomaju.id","password":"rahasia-456","role":"STAFF"}'
 ```
+
+## Multi-tenancy
+
+The tenant comes only from the signed JWT (`tenant_id` claim), never from the
+request. Isolation is enforced centrally by Hibernate's `@TenantId`: every
+query on a tenant-owned entity is filtered by the current tenant, inserts are
+stamped with it, and with no tenant in context nothing matches (fail closed).
+Another tenant's id returns the same 404 as an id that doesn't exist.
+`TenantIsolationTests` checks read / list / update / delete across tenants.
 
 PostgreSQL is published on host port **5433** (not 5432) so it can run next
 to another local PostgreSQL. Override with `POSTGRES_PORT` / `DB_URL` in `.env`.
@@ -76,7 +95,7 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 
 - [x] Step 0 — repo, agent guide (`CLAUDE.md`), PR template
 - [x] Step 1 — skeleton, Docker Compose, health endpoint, Testcontainers, CI
-- [ ] Week 1 — tenants, users, JWT auth, centralized tenant filter, isolation tests
+- [x] Week 1 — tenants, users, JWT auth, centralized tenant filter, isolation tests
 - [ ] Week 2 — customers, invoices, line items, tax, discount
 - [ ] Week 3 — partial payments, invoice numbering, overdue job
 - [ ] Week 4 — AI draft extraction, troubleshooting write-ups

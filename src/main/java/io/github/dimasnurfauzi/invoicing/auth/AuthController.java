@@ -1,5 +1,7 @@
 package io.github.dimasnurfauzi.invoicing.auth;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,13 +21,14 @@ public class AuthController {
   }
 
   @PostMapping("/api/auth/login")
+  @SecurityRequirements // public
   public LoginResponse login(@Valid @RequestBody LoginRequest request) {
     return authService.login(request);
   }
 
   /** The caller's identity, read from the validated token (no database access). */
   @GetMapping("/api/me")
-  public MeResponse me(@AuthenticationPrincipal Jwt jwt) {
+  public MeResponse me(@Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
     return new MeResponse(
         UUID.fromString(jwt.getSubject()),
         UUID.fromString(jwt.getClaimAsString(JwtClaims.TENANT_ID)),

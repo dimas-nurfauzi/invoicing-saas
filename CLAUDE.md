@@ -84,6 +84,22 @@ boundary; never return JPA entities from controllers.
 - Every new tenant-owned endpoint gets an isolation test: tenant A cannot read,
   update, delete, or list tenant B's data.
 
+How it's implemented (Hibernate partitioned multi-tenancy):
+- Tenant-owned entities mark their `tenantId` field with `@TenantId`. Hibernate
+  then filters every JPQL/Criteria query and `findById` by the current tenant,
+  and fills `tenant_id` on insert. Don't set it by hand; don't add a
+  `tenantId` parameter to repository methods.
+- `TenantContextFilter` sets `TenantContext` from the JWT's `tenant_id` claim
+  and clears it in `finally`. `TenantIdentifierResolver` hands it to Hibernate
+  and fails closed (no context → matches nothing). There is no bypass tenant.
+- Hibernate reads the tenant when the session opens (transaction start), so set
+  the context *before* `@Transactional` code runs. Outside a request (scheduled
+  jobs, `@Async`) wrap work in `TenantContext.callAs(tenantId, ...)`.
+- Native SQL and `JdbcTemplate` bypass the filter: don't use them on
+  tenant-owned tables in main code (tests may, to assert raw DB state).
+- `TenantSchemaGuardTests` fails if an entity maps `tenant_id` without
+  `@TenantId`, or a `tenant_id` column is nullable or unindexed.
+
 ### Money
 - Money is `BigDecimal` everywhere. Never `double`/`float`, never
   `new BigDecimal(double)` — use `BigDecimal.valueOf` or string constructors.

@@ -1,5 +1,6 @@
 package io.github.dimasnurfauzi.invoicing.tenant;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +21,7 @@ public class TenantRegistrationController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
+  @SecurityRequirements // public
   public TenantRegistrationResponse register(
       @Valid @RequestBody TenantRegistrationRequest request) {
     return registrationService.register(request);
