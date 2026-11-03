@@ -11,8 +11,12 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.TenantId;
 
-/** A login identity. Tenant-owned: email is unique only within its tenant. */
+/**
+ * A login identity. Tenant-owned: {@code @TenantId} makes Hibernate filter every query by the
+ * current tenant and fill tenant_id on insert. Email is unique only within its tenant.
+ */
 @Entity
 @Table(name = "users")
 public class User {
@@ -21,6 +25,7 @@ public class User {
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
+  @TenantId
   @Column(name = "tenant_id", nullable = false, updatable = false)
   private UUID tenantId;
 
@@ -40,8 +45,8 @@ public class User {
 
   protected User() {}
 
-  public User(UUID tenantId, String email, String passwordHash, Role role) {
-    this.tenantId = tenantId;
+  /** tenant_id is not a parameter: Hibernate sets it from the current tenant on insert. */
+  public User(String email, String passwordHash, Role role) {
     this.email = email;
     this.passwordHash = passwordHash;
     this.role = role;
@@ -65,6 +70,10 @@ public class User {
 
   public Role getRole() {
     return role;
+  }
+
+  public void changeRole(Role role) {
+    this.role = role;
   }
 
   public Instant getCreatedAt() {
