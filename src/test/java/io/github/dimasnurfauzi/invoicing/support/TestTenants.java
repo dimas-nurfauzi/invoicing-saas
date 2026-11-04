@@ -105,6 +105,42 @@ public final class TestTenants {
     return (String) response.getBody().get("id");
   }
 
+  /**
+   * Creates and issues a one-line invoice with the given dates, currency and unit price (no tax),
+   * so total == unitPrice. Returns its id.
+   */
+  public String createIssuedInvoice(
+      String token,
+      String customerId,
+      String issueDate,
+      String dueDate,
+      String currency,
+      String unitPrice) {
+    ResponseEntity<Map> created =
+        call(
+            HttpMethod.POST,
+            "/api/invoices",
+            token,
+            Map.of(
+                "customerId", customerId,
+                "issueDate", issueDate,
+                "dueDate", dueDate,
+                "currency", currency,
+                "lines",
+                    List.of(
+                        Map.of(
+                            "description", "Item",
+                            "quantity", "1",
+                            "unitPrice", unitPrice))),
+            Map.class);
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    String id = (String) created.getBody().get("id");
+    ResponseEntity<Map> issued =
+        call(HttpMethod.POST, "/api/invoices/" + id + "/issue", token, null, Map.class);
+    assertThat(issued.getStatusCode()).isEqualTo(HttpStatus.OK);
+    return id;
+  }
+
   /** Creates and issues a one-line invoice (total 111000.00); returns its id. */
   public String createIssuedInvoice(String token, String customerId) {
     String id = createInvoice(token, customerId);

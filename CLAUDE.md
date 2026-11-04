@@ -106,7 +106,12 @@ How it's implemented (Hibernate partitioned multi-tenancy):
   and fails closed (no context → matches nothing). There is no bypass tenant.
 - Hibernate reads the tenant when the session opens (transaction start), so set
   the context *before* `@Transactional` code runs. Outside a request (scheduled
-  jobs, `@Async`) wrap work in `TenantContext.callAs(tenantId, ...)`.
+  jobs, `@Async`) wrap work in `TenantContext.callAs(tenantId, ...)` per tenant
+  (see `invoice.OverdueInvoiceJob`).
+- Anything that changes an invoice's status or amounts locks the invoice row
+  first (`InvoiceRepository.lockById` / `lockOverdueCandidates`): issuing,
+  voiding, payments and the overdue job. Without it, concurrent requests lose
+  updates (proven by the mutation checks in the numbering and payment PRs).
 - Native SQL and `JdbcTemplate` bypass the filter: don't use them on
   tenant-owned tables in main code (tests may, to assert raw DB state).
 - `TenantSchemaGuardTests` fails if an entity maps `tenant_id` without

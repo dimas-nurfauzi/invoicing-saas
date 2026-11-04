@@ -21,6 +21,10 @@ app:
     issuer: invoicing-saas
   # Public self-service signup (POST /api/tenants). false = only platform admins create tenants.
   tenant-signup-enabled: ${TENANT_SIGNUP_ENABLED:true}
+  # Daily job marking SENT invoices past their due date as OVERDUE. cron "-" disables it.
+  overdue:
+    cron: "${OVERDUE_CRON:0 5 0 * * *}"
+    zone: ${OVERDUE_ZONE:Asia/Jakarta}
   # First platform admin, created at startup if both are set. No default account.
   platform-admin:
     email: ${PLATFORM_ADMIN_EMAIL:}
