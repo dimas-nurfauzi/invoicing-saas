@@ -5,6 +5,8 @@ import io.github.dimasnurfauzi.invoicing.security.jwt.JwtClaims;
 import io.github.dimasnurfauzi.invoicing.security.jwt.JwtService;
 import io.github.dimasnurfauzi.invoicing.tenant.context.TenantContextFilter;
 import io.github.dimasnurfauzi.invoicing.tenant.repository.TenantRepository;
+import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -34,6 +36,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * Stateless JWT security with two separate filter chains:
@@ -47,10 +52,13 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * A token of one kind is rejected (401) by the other chain's decoder, so the separation does not
  * depend on controller code. Tokens are HS256-signed by this app ({@link JwtService}).
+ *
+ * <p>CORS ({@link CorsProperties}) applies to the tenant chain only, for the browser frontend. The
+ * platform API has no browser client and stays same-origin only.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class})
 public class SecurityConfig {
 
   @Bean
@@ -73,7 +81,13 @@ public class SecurityConfig {
   @Bean
   @Order(2)
   SecurityFilterChain tenantFilterChain(
-      HttpSecurity http, JwtDecoder jwtDecoder, TenantRepository tenants) throws Exception {
+      HttpSecurity http, JwtDecoder jwtDecoder, TenantRepository tenants, CorsProperties cors)
+      throws Exception {
+    if (cors.enabled()) {
+      http.cors(c -> c.configurationSource(corsSource(cors)));
+    } else {
+      http.cors(AbstractHttpConfigurer::disable);
+    }
     stateless(http)
         .authorizeHttpRequests(auth ->
             auth.requestMatchers(HttpMethod.POST, "/api/tenants", "/api/auth/login")
@@ -96,6 +110,24 @@ public class SecurityConfig {
             new TenantContextFilter(tenants::findStatusById),
             BearerTokenAuthenticationFilter.class);
     return http.build();
+  }
+
+  /**
+   * Exact origins only, no credentials (the token travels in the Authorization header, not a
+   * cookie). Not a bean: a {@code corsConfigurationSource} bean would also be picked up by the
+   * platform chain.
+   */
+  private static CorsConfigurationSource corsSource(CorsProperties cors) {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(cors.allowedOrigins());
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
+    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id"));
+    config.setExposedHeaders(List.of("X-Request-Id", "Location"));
+    config.setAllowCredentials(false);
+    config.setMaxAge(Duration.ofHours(1));
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
   }
 
   /** Decoder for tenant tokens (the only {@link JwtDecoder} bean). */

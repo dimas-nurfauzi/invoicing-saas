@@ -171,6 +171,7 @@ All configuration is environment variables (documented in
 | `OVERDUE_CRON`, `OVERDUE_ZONE` | `0 5 0 * * *`, `Asia/Jakarta` | Overdue job schedule (`-` disables) |
 | `ANTHROPIC_API_KEY` | empty | Enables AI drafts (503 without it) |
 | `AI_MODEL`, `AI_EFFORT` | `claude-opus-5-5`, `low` | Claude model and effort |
+| `CORS_ALLOWED_ORIGINS` | empty (off) | Exact browser origins allowed to call the tenant API, comma-separated (e.g. `http://localhost:5173`); never wildcards; platform API excluded |
 | `SPRINGDOC_ENABLED` | `true` | Swagger UI / OpenAPI spec; set `false` in production |
 
 ## How it works

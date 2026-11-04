@@ -19,6 +19,10 @@ app:
     secret: ${JWT_SECRET}
     ttl: ${JWT_TTL:PT1H}
     issuer: invoicing-saas
+  # Browser origins allowed to call the tenant API cross-origin (comma-separated exact origins,
+  # e.g. http://localhost:5173). Empty = CORS off. The platform API never allows CORS.
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   # Public self-service signup (POST /api/tenants). false = only platform admins create tenants.
   tenant-signup-enabled: ${TENANT_SIGNUP_ENABLED:true}
   # Daily job marking SENT invoices past their due date as OVERDUE. cron "-" disables it.

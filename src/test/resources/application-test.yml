@@ -3,6 +3,8 @@ app:
   # Tests call OverdueInvoiceJob.markOverdue(date) directly; never on a schedule.
   overdue:
     cron: "-"
+  cors:
+    allowed-origins: http://localhost:5173
   jwt:
     secret: test-only-jwt-secret-0123456789abcdef0123456789
   platform-admin:
