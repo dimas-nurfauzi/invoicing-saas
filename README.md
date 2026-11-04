@@ -66,6 +66,13 @@ curl -X POST localhost:8080/api/users -H "Authorization: Bearer <accessToken>" \
   -d '{"email":"staff@tokomaju.id","password":"rahasia-456","role":"STAFF"}'
 ```
 
+## Customers
+
+`/api/customers`: create, list (paged, `q` searches name/email), get, update
+(`PUT`), archive (`DELETE`, ADMIN only) and restore. Archived customers are
+hidden from lists unless `includeArchived=true`, but stay readable by id so
+invoices can keep referencing them.
+
 ## Platform admin
 
 The SaaS operator has a separate account type (not a tenant role). Set

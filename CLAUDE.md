@@ -72,6 +72,13 @@ io.github.dimasnurfauzi.invoicing
 Each feature: `Controller` → `Service` → `Repository`. DTOs at the controller
 boundary; never return JPA entities from controllers.
 
+API conventions:
+- List endpoints are paged: `page` (0-based), `size` (default 20, max 100),
+  returning `common.PageResponse` (never Spring's `Page` directly).
+- Business records referenced by others (customers, later invoices) are
+  archived (`archived_at`), not hard-deleted.
+- Errors are RFC 9457 `ProblemDetail` via `GlobalExceptionHandler`.
+
 ## Non-negotiable rules
 
 ### Multi-tenancy

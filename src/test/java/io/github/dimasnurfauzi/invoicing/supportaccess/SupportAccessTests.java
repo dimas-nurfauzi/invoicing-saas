@@ -155,6 +155,41 @@ class SupportAccessTests {
   }
 
   @Test
+  void customersSupportViewNeedsGrantAndIsLogged() {
+    String customerId = api.createCustomer(tenantA.adminToken(), "Support Customer");
+
+    ResponseEntity<String> denied =
+        api.call(
+            HttpMethod.GET,
+            "/api/platform/tenants/" + tenantA.tenantId() + "/support/customers?reason=TICKET-9",
+            platformToken,
+            null,
+            String.class);
+    assertThat(denied.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+    grant(tenantA, 1);
+    ResponseEntity<Map> allowed =
+        api.call(
+            HttpMethod.GET,
+            "/api/platform/tenants/" + tenantA.tenantId() + "/support/customers?reason=TICKET-9",
+            platformToken,
+            null,
+            Map.class);
+
+    assertThat(allowed.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat((List<Map<String, Object>>) allowed.getBody().get("content"))
+        .extracting(c -> c.get("id"))
+        .containsExactly(customerId);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM support_access_logs WHERE tenant_id = ?::uuid"
+                    + " AND resource = 'GET customers'",
+                Integer.class,
+                tenantA.tenantId()))
+        .isOne();
+  }
+
+  @Test
   void unknownTenantIs404() {
     ResponseEntity<String> response =
         api.call(

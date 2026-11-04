@@ -1,8 +1,12 @@
 package io.github.dimasnurfauzi.invoicing.supportaccess;
 
 import io.github.dimasnurfauzi.invoicing.auth.UserResponse;
+import io.github.dimasnurfauzi.invoicing.common.PageResponse;
+import io.github.dimasnurfauzi.invoicing.customer.CustomerResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -37,5 +41,16 @@ public class PlatformSupportController {
       @RequestParam @NotBlank @Size(min = 3, max = 200) String reason,
       @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
     return service.listUsers(tenantId, UUID.fromString(jwt.getSubject()), reason.trim());
+  }
+
+  @GetMapping("/customers")
+  public PageResponse<CustomerResponse> customers(
+      @PathVariable UUID tenantId,
+      @RequestParam @NotBlank @Size(min = 3, max = 200) String reason,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+      @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+    return service.listCustomers(
+        tenantId, UUID.fromString(jwt.getSubject()), reason.trim(), page, size);
   }
 }
