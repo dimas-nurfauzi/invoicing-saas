@@ -70,6 +70,14 @@ public final class TestTenants {
     return (String) response.getBody().get("id");
   }
 
+  /** Creates a customer in the token's tenant and returns its id. */
+  public String createCustomer(String token, String name) {
+    ResponseEntity<Map> response =
+        call(HttpMethod.POST, "/api/customers", token, Map.of("name", name), Map.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    return (String) response.getBody().get("id");
+  }
+
   /** {@code uriVariables} fill {@code {placeholders}} in {@code path} (URL-encoded). */
   public <T> ResponseEntity<T> call(
       HttpMethod method,

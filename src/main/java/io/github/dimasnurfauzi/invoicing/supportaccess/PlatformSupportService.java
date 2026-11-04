@@ -4,6 +4,9 @@ import io.github.dimasnurfauzi.invoicing.auth.UserRepository;
 import io.github.dimasnurfauzi.invoicing.auth.UserResponse;
 import io.github.dimasnurfauzi.invoicing.common.ForbiddenException;
 import io.github.dimasnurfauzi.invoicing.common.NotFoundException;
+import io.github.dimasnurfauzi.invoicing.common.PageResponse;
+import io.github.dimasnurfauzi.invoicing.customer.CustomerResponse;
+import io.github.dimasnurfauzi.invoicing.customer.CustomerService;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantContext;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantRepository;
 import java.time.Clock;
@@ -13,6 +16,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -40,6 +44,7 @@ public class PlatformSupportService {
   private final SupportAccessGrantRepository grants;
   private final SupportAccessLogRepository logs;
   private final UserRepository users;
+  private final CustomerService customers;
   private final TransactionTemplate writeTransaction;
   private final TransactionTemplate readOnlyTransaction;
   private final Clock clock = Clock.systemUTC();
@@ -49,11 +54,13 @@ public class PlatformSupportService {
       SupportAccessGrantRepository grants,
       SupportAccessLogRepository logs,
       UserRepository users,
+      CustomerService customers,
       PlatformTransactionManager transactionManager) {
     this.tenants = tenants;
     this.grants = grants;
     this.logs = logs;
     this.users = users;
+    this.customers = customers;
     this.writeTransaction = new TransactionTemplate(transactionManager);
     this.readOnlyTransaction = new TransactionTemplate(transactionManager);
     this.readOnlyTransaction.setReadOnly(true);
@@ -67,6 +74,21 @@ public class PlatformSupportService {
         "GET users",
         () ->
             users.findAllByOrderByCreatedAtAscEmailAsc().stream().map(UserResponse::from).toList());
+  }
+
+  /** All customers of the tenant, archived included (support needs the full picture). */
+  public PageResponse<CustomerResponse> listCustomers(
+      UUID tenantId, UUID platformAdminId, String reason, int page, int size) {
+    return readAs(
+        tenantId,
+        platformAdminId,
+        reason,
+        "GET customers",
+        () ->
+            PageResponse.from(
+                customers.search(
+                    null, true, PageRequest.of(page, size, CustomerService.DEFAULT_SORT)),
+                CustomerResponse::from));
   }
 
   /** The only way platform code may read tenant-owned data. */
