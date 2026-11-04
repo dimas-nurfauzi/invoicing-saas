@@ -25,6 +25,14 @@ app:
   overdue:
     cron: "${OVERDUE_CRON:0 5 0 * * *}"
     zone: ${OVERDUE_ZONE:Asia/Jakarta}
+  # AI invoice drafts (Claude API). Without ANTHROPIC_API_KEY the endpoint answers 503.
+  ai:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${AI_MODEL:claude-opus-5-5}
+    effort: ${AI_EFFORT:low}
+    max-tokens: 16000
+    timeout: 60s
+    max-attempts: 3
   # First platform admin, created at startup if both are set. No default account.
   platform-admin:
     email: ${PLATFORM_ADMIN_EMAIL:}

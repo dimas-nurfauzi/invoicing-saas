@@ -162,6 +162,20 @@ How it's implemented (Hibernate partitioned multi-tenancy):
   user action through the normal invoice endpoint (same validation as manual).
 - API key via env var `ANTHROPIC_API_KEY`. Tests mock the client.
 
+How it's implemented (`ai/`):
+- `InvoiceDraftModel` is the port; `ClaudeInvoiceDraftModel` calls the beta
+  Messages API with structured outputs (`output_config.format` =
+  `ai/invoice-draft.schema.json`), configurable effort and the server-side
+  refusal fallback. Tests swap in `ScriptedInvoiceDraftModel` (registered as
+  `@Primary` in `TestcontainersConfiguration`, so the shared context never calls
+  the API).
+- Keep the schema file to simple keywords (types, required,
+  additionalProperties) so it is valid for structured outputs; put value rules
+  in `InvoiceDraftValidator`, which reuses `InvoiceRequest.Line` constraints.
+- Retries are fresh single-turn requests with the previous errors in the
+  prompt (no replayed assistant turns). Never send tenant data beyond the text
+  the user pasted, and never log that text.
+
 ## Testing
 
 - Integration tests use Testcontainers PostgreSQL (shared container per test

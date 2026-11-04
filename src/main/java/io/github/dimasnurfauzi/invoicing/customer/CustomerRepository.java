@@ -1,5 +1,6 @@
 package io.github.dimasnurfauzi.invoicing.customer;
 
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,4 +25,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
       @Param("pattern") String pattern,
       @Param("includeArchived") boolean includeArchived,
       Pageable pageable);
+
+  /** Exact, case-insensitive name match among active customers (used to match AI drafts). */
+  List<Customer> findByNameIgnoreCaseAndArchivedAtIsNull(String name);
 }

@@ -1,5 +1,9 @@
 package io.github.dimasnurfauzi.invoicing.common;
 
+import io.github.dimasnurfauzi.invoicing.ai.AiInvalidOutputException;
+import io.github.dimasnurfauzi.invoicing.ai.AiNotConfiguredException;
+import io.github.dimasnurfauzi.invoicing.ai.AiRefusedException;
+import io.github.dimasnurfauzi.invoicing.ai.AiUnavailableException;
 import io.github.dimasnurfauzi.invoicing.auth.InvalidCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -37,5 +41,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(InvalidCredentialsException.class)
   ProblemDetail handleInvalidCredentials(InvalidCredentialsException e) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, e.getMessage());
+  }
+
+  @ExceptionHandler({AiNotConfiguredException.class, AiUnavailableException.class})
+  ProblemDetail handleAiUnavailable(RuntimeException e) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+  }
+
+  @ExceptionHandler(AiRefusedException.class)
+  ProblemDetail handleAiRefused(AiRefusedException e) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
+  }
+
+  @ExceptionHandler(AiInvalidOutputException.class)
+  ProblemDetail handleAiInvalidOutput(AiInvalidOutputException e) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, e.getMessage());
   }
 }
