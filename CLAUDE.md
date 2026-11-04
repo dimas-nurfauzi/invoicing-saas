@@ -54,34 +54,46 @@ docker compose --profile app up --build   # full stack: app container + PostgreS
 
 ## Package layout
 
-Package by feature, not by layer:
+Package by feature; inside a feature, sub-packages by kind (only the ones it needs):
 
 ```
 io.github.dimasnurfauzi.invoicing
-├── tenant/      # tenant registration, TenantContext, tenant filter
-├── auth/        # JWT, login, security config
+├── security/        # config/ (SecurityConfig, JwtProperties), jwt/ (JwtService, JwtClaims)
+├── auth/            # login and /api/me
+├── user/            # users of a tenant (ADMIN / STAFF)
+├── tenant/          # registration; context/ = TenantContext, filter, Hibernate resolver
 ├── customer/
-├── invoice/     # invoice, line item, numbering, status job
+├── invoice/         # domain/ (calculator, numbers), job/ (overdue job)
 ├── payment/
 ├── summary/
-├── ai/          # Claude API client, schema validation, draft extraction
-├── platform/    # platform admin (SaaS operator): login, tenant list/suspend
-├── supportaccess/ # tenant-granted, audited, read-only support access
-└── common/      # errors, money helpers, base entities, request id
+├── ai/              # client/ (Claude adapter), service/ (draft, schema, validation, prompt)
+├── platform/        # platform admin (SaaS operator): login, tenant list/suspend
+├── supportaccess/   # tenant-granted, audited, read-only support access
+└── common/          # exception/, config/, web/ (request id), dto/ (PageResponse)
 ```
 
-Each feature: `Controller` → `Service` → `Repository`. DTOs at the controller
-boundary; never return JPA entities from controllers.
+Sub-packages: `controller/`, `dto/` (requests, responses), `entity/` (JPA entities and
+their enums), `repository/`, `service/`, `exception/`, `config/`, plus `domain/` for
+pure logic, `job/` for schedulers, `client/` for external APIs, `context/` for the
+tenant context.
+
+Flow: `controller` → `service` → `repository`. DTOs at the controller boundary;
+never return JPA entities from controllers. Entity methods that change state
+under a lock (e.g. `Invoice.issue`, `markOverdue`, `applyPayment`) are public
+because services live in another package; their Javadoc says which service may
+call them, and they still enforce their own invariants (allowed transitions).
+Keep tightly coupled classes in one package where package-private access matters
+(e.g. `tenant/context`: only the filter may set or clear the tenant).
 
 API conventions:
 - List endpoints are paged: `page` (0-based), `size` (default 20, max 100),
-  returning `common.PageResponse` (never Spring's `Page` directly).
+  returning `common.dto.PageResponse` (never Spring's `Page` directly).
 - Business records referenced by others (customers, later invoices) are
   archived (`archived_at`), not hard-deleted.
 - Errors are RFC 9457 `ProblemDetail` via `GlobalExceptionHandler`.
 - Money in JSON responses is a string (`"1500000.00"`, `@JsonFormat(shape = STRING)`);
   requests accept strings or numbers. Amounts are always computed server-side
-  (`invoice.InvoiceCalculator`), never taken from the request.
+  (`invoice.domain.InvoiceCalculator`), never taken from the request.
 
 ## Non-negotiable rules
 
@@ -108,7 +120,7 @@ How it's implemented (Hibernate partitioned multi-tenancy):
 - Hibernate reads the tenant when the session opens (transaction start), so set
   the context *before* `@Transactional` code runs. Outside a request (scheduled
   jobs, `@Async`) wrap work in `TenantContext.callAs(tenantId, ...)` per tenant
-  (see `invoice.OverdueInvoiceJob`).
+  (see `invoice.job.OverdueInvoiceJob`).
 - Anything that changes an invoice's status or amounts locks the invoice row
   first (`InvoiceRepository.lockById` / `lockOverdueCandidates`): issuing,
   voiding, payments and the overdue job. Without it, concurrent requests lose
@@ -193,6 +205,7 @@ How it's implemented (`ai/`):
 - Commit messages: Conventional Commits (`feat: add customer CRUD`).
 - Fill in the PR template, including what the agent was asked to do and what
   the human corrected.
-- Changes to `auth/` and `tenant/` are reviewed line by line by a human. Agents
-  must call out any change in those packages explicitly in the PR description.
+- Changes to `security/`, `auth/`, `user/` and `tenant/` are reviewed line by line by a
+  human. Agents must call out any change in those packages explicitly in the PR
+  description.
 - Don't add dependencies without stating why in the PR.

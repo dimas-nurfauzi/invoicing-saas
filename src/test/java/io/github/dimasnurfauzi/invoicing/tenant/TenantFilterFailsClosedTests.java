@@ -4,11 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.dimasnurfauzi.invoicing.TestcontainersConfiguration;
-import io.github.dimasnurfauzi.invoicing.auth.Role;
-import io.github.dimasnurfauzi.invoicing.auth.User;
-import io.github.dimasnurfauzi.invoicing.auth.UserRepository;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants.TenantSession;
+import io.github.dimasnurfauzi.invoicing.tenant.context.TenantContext;
+import io.github.dimasnurfauzi.invoicing.user.entity.Role;
+import io.github.dimasnurfauzi.invoicing.user.entity.User;
+import io.github.dimasnurfauzi.invoicing.user.repository.UserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

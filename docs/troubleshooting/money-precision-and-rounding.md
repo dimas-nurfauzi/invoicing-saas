@@ -32,7 +32,7 @@ Unit tests pin the edge cases with exact-scale assertions.
 
 ## 3. Design
 
-All money math lives in one pure class, `invoice/InvoiceCalculator`:
+All money math lives in one pure class, `invoice/domain/InvoiceCalculator`:
 
 ```
 subtotal = round(quantity × unitPrice)
