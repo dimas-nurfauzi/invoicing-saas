@@ -42,6 +42,7 @@ set -a; source .env; set +a       # export env (JWT_SECRET is required)
 ./mvnw test -Dtest=ClassName      # single test class
 ./mvnw spotless:apply             # auto-format (google-java-format)
 ./mvnw spotless:check             # lint only (also bound to `validate`)
+docker compose --profile app up --build   # full stack: app container + PostgreSQL
 ```
 
 - Health: `GET /actuator/health`, `/actuator/info`, `/actuator/prometheus`.
