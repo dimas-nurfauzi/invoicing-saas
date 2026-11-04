@@ -24,6 +24,9 @@ public record InvoiceResponse(
     @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal discountTotal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal taxTotal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal total,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amountPaid,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal balanceDue,
+    Instant paidAt,
     List<Line> lines,
     BillTo billTo,
     Instant issuedAt,
@@ -78,6 +81,9 @@ public record InvoiceResponse(
         invoice.getDiscountTotal(),
         invoice.getTaxTotal(),
         invoice.getTotal(),
+        invoice.getAmountPaid(),
+        invoice.getBalanceDue(),
+        invoice.getPaidAt(),
         invoice.getLines().stream().map(Line::from).toList(),
         invoice.getIssuedAt() == null
             ? null

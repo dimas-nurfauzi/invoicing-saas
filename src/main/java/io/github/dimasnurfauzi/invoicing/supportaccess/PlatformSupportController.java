@@ -5,6 +5,7 @@ import io.github.dimasnurfauzi.invoicing.common.PageResponse;
 import io.github.dimasnurfauzi.invoicing.customer.CustomerResponse;
 import io.github.dimasnurfauzi.invoicing.invoice.InvoiceResponse;
 import io.github.dimasnurfauzi.invoicing.invoice.InvoiceSummaryResponse;
+import io.github.dimasnurfauzi.invoicing.payment.PaymentResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -74,6 +75,16 @@ public class PlatformSupportController {
       @RequestParam @NotBlank @Size(min = 3, max = 200) String reason,
       @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
     return service.getInvoice(
+        tenantId, UUID.fromString(jwt.getSubject()), reason.trim(), invoiceId);
+  }
+
+  @GetMapping("/invoices/{invoiceId}/payments")
+  public List<PaymentResponse> payments(
+      @PathVariable UUID tenantId,
+      @PathVariable UUID invoiceId,
+      @RequestParam @NotBlank @Size(min = 3, max = 200) String reason,
+      @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+    return service.listPayments(
         tenantId, UUID.fromString(jwt.getSubject()), reason.trim(), invoiceId);
   }
 }
