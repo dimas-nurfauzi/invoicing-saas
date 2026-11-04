@@ -136,6 +136,41 @@ class InvoiceIsolationTests {
   }
 
   @Test
+  void cannotIssueOrVoidAnotherTenantsInvoice() {
+    ResponseEntity<String> issue =
+        api.call(
+            HttpMethod.POST,
+            "/api/invoices/" + invoiceB + "/issue",
+            tenantA.adminToken(),
+            null,
+            String.class);
+    assertThat(issue.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(statusOf(invoiceB)).isEqualTo("DRAFT");
+
+    api.call(
+        HttpMethod.POST,
+        "/api/invoices/" + invoiceB + "/issue",
+        tenantB.adminToken(),
+        null,
+        String.class);
+    ResponseEntity<String> voidIt =
+        api.call(
+            HttpMethod.POST,
+            "/api/invoices/" + invoiceB + "/void",
+            tenantA.adminToken(),
+            Map.of("reason", "hostile"),
+            String.class);
+    assertThat(voidIt.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(statusOf(invoiceB)).isEqualTo("SENT");
+  }
+
+  @Test
+  void numberingIsPerTenant() {
+    assertThat(issuedNumber(tenantA, invoiceA)).isEqualTo("INV-2026-0001");
+    assertThat(issuedNumber(tenantB, invoiceB)).isEqualTo("INV-2026-0001");
+  }
+
+  @Test
   void isolationHoldsInBothDirections() {
     assertThat(get(tenantB, invoiceA).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(ids(tenantB, "/api/invoices?customerId=" + customerA)).isEmpty();
@@ -182,6 +217,23 @@ class InvoiceIsolationTests {
 
   private static String withoutInstance(String problemJson) {
     return problemJson.replaceAll("\"instance\":\"[^\"]*\"", "");
+  }
+
+  private String issuedNumber(TenantSession tenant, String invoiceId) {
+    ResponseEntity<Map> response =
+        api.call(
+            HttpMethod.POST,
+            "/api/invoices/" + invoiceId + "/issue",
+            tenant.adminToken(),
+            null,
+            Map.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    return (String) response.getBody().get("invoiceNumber");
+  }
+
+  private String statusOf(String invoiceId) {
+    return jdbc.queryForObject(
+        "SELECT status FROM invoices WHERE id = ?::uuid", String.class, invoiceId);
   }
 
   private String customerOf(String invoiceId) {

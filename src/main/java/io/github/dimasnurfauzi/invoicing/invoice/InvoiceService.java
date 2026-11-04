@@ -70,7 +70,7 @@ public class InvoiceService {
 
   @Transactional
   public InvoiceResponse update(UUID id, InvoiceRequest request) {
-    Invoice invoice = find(id);
+    Invoice invoice = invoices.lockById(id).orElseThrow(() -> new NotFoundException("Invoice"));
     requireDraft(invoice, "edited");
     invoice.replaceDraft(
         billableCustomer(request.customerId()),
@@ -85,7 +85,7 @@ public class InvoiceService {
   /** Drafts have no number and nothing refers to them yet, so they are really deleted. */
   @Transactional
   public void delete(UUID id) {
-    Invoice invoice = find(id);
+    Invoice invoice = invoices.lockById(id).orElseThrow(() -> new NotFoundException("Invoice"));
     requireDraft(invoice, "deleted");
     invoices.delete(invoice);
   }

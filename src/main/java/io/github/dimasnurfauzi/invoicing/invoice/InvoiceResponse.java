@@ -25,10 +25,17 @@ public record InvoiceResponse(
     @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal taxTotal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal total,
     List<Line> lines,
+    BillTo billTo,
+    Instant issuedAt,
+    Instant voidedAt,
+    String voidReason,
     Instant createdAt,
     Instant updatedAt) {
 
   public record CustomerRef(UUID id, String name) {}
+
+  /** Customer data frozen at issue time; null for drafts. */
+  public record BillTo(String name, String email, String address, String taxId) {}
 
   public record Line(
       int lineNo,
@@ -72,6 +79,16 @@ public record InvoiceResponse(
         invoice.getTaxTotal(),
         invoice.getTotal(),
         invoice.getLines().stream().map(Line::from).toList(),
+        invoice.getIssuedAt() == null
+            ? null
+            : new BillTo(
+                invoice.getBillToName(),
+                invoice.getBillToEmail(),
+                invoice.getBillToAddress(),
+                invoice.getBillToTaxId()),
+        invoice.getIssuedAt(),
+        invoice.getVoidedAt(),
+        invoice.getVoidReason(),
         invoice.getCreatedAt(),
         invoice.getUpdatedAt());
   }

@@ -78,6 +78,28 @@ public class Invoice {
   @Column(nullable = false, precision = 19, scale = 2)
   private BigDecimal total;
 
+  @Column(name = "issued_at")
+  private Instant issuedAt;
+
+  @Column(name = "voided_at")
+  private Instant voidedAt;
+
+  @Column(name = "void_reason", length = 500)
+  private String voidReason;
+
+  // Snapshot of the customer taken when the invoice is issued.
+  @Column(name = "bill_to_name", length = 200)
+  private String billToName;
+
+  @Column(name = "bill_to_email", length = 254)
+  private String billToEmail;
+
+  @Column(name = "bill_to_address", length = 500)
+  private String billToAddress;
+
+  @Column(name = "bill_to_tax_id", length = 30)
+  private String billToTaxId;
+
   @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
   @OrderBy("lineNo ASC")
   private List<InvoiceLine> lines = new ArrayList<>();
@@ -142,6 +164,34 @@ public class Invoice {
     return status == InvoiceStatus.DRAFT;
   }
 
+  /**
+   * DRAFT → SENT with the given number. Freezes the bill-to data from the current customer. The
+   * caller holds the invoice and counter locks.
+   */
+  void issue(String number, Instant now) {
+    transitionTo(InvoiceStatus.SENT);
+    this.invoiceNumber = number;
+    this.issuedAt = now;
+    this.billToName = customer.getName();
+    this.billToEmail = customer.getEmail();
+    this.billToAddress = customer.getBillingAddress();
+    this.billToTaxId = customer.getTaxId();
+  }
+
+  /** SENT/OVERDUE → VOID. The number stays used, so the sequence has no gaps. */
+  void voidInvoice(String reason, Instant now) {
+    transitionTo(InvoiceStatus.VOID);
+    this.voidReason = reason;
+    this.voidedAt = now;
+  }
+
+  private void transitionTo(InvoiceStatus next) {
+    if (!status.canTransitionTo(next)) {
+      throw new IllegalInvoiceTransitionException(status, next);
+    }
+    this.status = next;
+  }
+
   public UUID getId() {
     return id;
   }
@@ -188,6 +238,34 @@ public class Invoice {
 
   public BigDecimal getTotal() {
     return total;
+  }
+
+  public Instant getIssuedAt() {
+    return issuedAt;
+  }
+
+  public Instant getVoidedAt() {
+    return voidedAt;
+  }
+
+  public String getVoidReason() {
+    return voidReason;
+  }
+
+  public String getBillToName() {
+    return billToName;
+  }
+
+  public String getBillToEmail() {
+    return billToEmail;
+  }
+
+  public String getBillToAddress() {
+    return billToAddress;
+  }
+
+  public String getBillToTaxId() {
+    return billToTaxId;
   }
 
   public List<InvoiceLine> getLines() {

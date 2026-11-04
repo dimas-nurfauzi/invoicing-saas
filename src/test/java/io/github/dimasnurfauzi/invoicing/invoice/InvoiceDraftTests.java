@@ -127,7 +127,7 @@ class InvoiceDraftTests {
   @Test
   void onlyDraftsCanBeEditedOrDeleted() {
     String id = api.createInvoice(token, customerId);
-    jdbc.update("UPDATE invoices SET status = 'SENT' WHERE id = ?::uuid", id);
+    issue(id);
 
     assertThat(
             api.call(HttpMethod.PUT, "/api/invoices/" + id, token, body(customerId), String.class)
@@ -163,7 +163,7 @@ class InvoiceDraftTests {
     String otherCustomer = api.createCustomer(token, "Kopi Senja");
     String first = api.createInvoice(token, customerId);
     String second = api.createInvoice(token, otherCustomer);
-    jdbc.update("UPDATE invoices SET status = 'SENT' WHERE id = ?::uuid", second);
+    issue(second);
 
     assertThat(ids("/api/invoices")).containsExactlyInAnyOrder(first, second);
     assertThat(ids("/api/invoices?customerId=" + customerId)).containsExactly(first);
@@ -237,6 +237,13 @@ class InvoiceDraftTests {
         "unitPrice", unitPrice,
         "discountPercent", discount,
         "taxRatePercent", tax);
+  }
+
+  private void issue(String id) {
+    assertThat(
+            api.call(HttpMethod.POST, "/api/invoices/" + id + "/issue", token, null, String.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.OK);
   }
 
   private ResponseEntity<Map> get(String id) {
