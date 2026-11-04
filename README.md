@@ -182,11 +182,20 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 - [x] Week 1 — tenants, users, JWT auth, centralized tenant filter, isolation tests
 - [x] Week 2 — customers, invoices, line items, tax, discount
 - [x] Week 3 — partial payments, invoice numbering, overdue job, summary
-- [ ] Week 4 — AI draft extraction, troubleshooting write-ups
+- [x] Week 4 — AI draft extraction, troubleshooting write-ups
 
 ## Troubleshooting write-ups
 
-Planned:
-- Race condition in invoice numbering
-- Cross-tenant data leak
-- Money precision and tax rounding
+What went wrong (or could have), how it was designed out, and the tests that
+prove it, including mutation checks where the fix was removed to show the test
+fails:
+
+- [Preventing a cross-tenant data leak](docs/troubleshooting/cross-tenant-data-leak.md):
+  `@TenantId` vs `@Filter` vs RLS, fail-closed tenant context, 404 not 403,
+  isolation tests that fail 7/7 when the filter is bypassed.
+- [Race conditions: invoice numbering and payments](docs/troubleshooting/invoice-numbering-race-condition.md):
+  why `MAX()+1` and sequences don't give gapless numbers, a row-locked counter,
+  and a lost update in partial payments that a CHECK constraint didn't catch.
+- [Money precision and tax rounding](docs/troubleshooting/money-precision-and-rounding.md):
+  `BigDecimal` end to end, HALF_UP per line then summed (and the case where it
+  changes the total), money as JSON strings.
