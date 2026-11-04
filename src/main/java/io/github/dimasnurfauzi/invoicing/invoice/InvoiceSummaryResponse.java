@@ -14,7 +14,9 @@ public record InvoiceSummaryResponse(
     String currency,
     LocalDate issueDate,
     LocalDate dueDate,
-    @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal total) {
+    @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal total,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amountPaid,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal balanceDue) {
 
   public static InvoiceSummaryResponse from(Invoice invoice) {
     return new InvoiceSummaryResponse(
@@ -26,6 +28,8 @@ public record InvoiceSummaryResponse(
         invoice.getCurrency(),
         invoice.getIssueDate(),
         invoice.getDueDate(),
-        invoice.getTotal());
+        invoice.getTotal(),
+        invoice.getAmountPaid(),
+        invoice.getBalanceDue());
   }
 }

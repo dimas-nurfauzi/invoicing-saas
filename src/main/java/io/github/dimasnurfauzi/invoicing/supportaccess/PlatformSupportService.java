@@ -10,6 +10,8 @@ import io.github.dimasnurfauzi.invoicing.customer.CustomerService;
 import io.github.dimasnurfauzi.invoicing.invoice.InvoiceResponse;
 import io.github.dimasnurfauzi.invoicing.invoice.InvoiceService;
 import io.github.dimasnurfauzi.invoicing.invoice.InvoiceSummaryResponse;
+import io.github.dimasnurfauzi.invoicing.payment.PaymentResponse;
+import io.github.dimasnurfauzi.invoicing.payment.PaymentService;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantContext;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantRepository;
 import java.time.Clock;
@@ -49,6 +51,7 @@ public class PlatformSupportService {
   private final UserRepository users;
   private final CustomerService customers;
   private final InvoiceService invoices;
+  private final PaymentService payments;
   private final TransactionTemplate writeTransaction;
   private final TransactionTemplate readOnlyTransaction;
   private final Clock clock = Clock.systemUTC();
@@ -60,6 +63,7 @@ public class PlatformSupportService {
       UserRepository users,
       CustomerService customers,
       InvoiceService invoices,
+      PaymentService payments,
       PlatformTransactionManager transactionManager) {
     this.tenants = tenants;
     this.grants = grants;
@@ -67,6 +71,7 @@ public class PlatformSupportService {
     this.users = users;
     this.customers = customers;
     this.invoices = invoices;
+    this.payments = payments;
     this.writeTransaction = new TransactionTemplate(transactionManager);
     this.readOnlyTransaction = new TransactionTemplate(transactionManager);
     this.readOnlyTransaction.setReadOnly(true);
@@ -115,6 +120,16 @@ public class PlatformSupportService {
         reason,
         "GET invoice " + invoiceId,
         () -> invoices.get(invoiceId));
+  }
+
+  public List<PaymentResponse> listPayments(
+      UUID tenantId, UUID platformAdminId, String reason, UUID invoiceId) {
+    return readAs(
+        tenantId,
+        platformAdminId,
+        reason,
+        "GET payments of invoice " + invoiceId,
+        () -> payments.list(invoiceId));
   }
 
   /** The only way platform code may read tenant-owned data. */

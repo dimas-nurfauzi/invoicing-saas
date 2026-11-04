@@ -87,7 +87,16 @@ returned as strings.
 - `POST /api/invoices/{id}/void` (ADMIN, with a reason): SENT/OVERDUE → VOID.
   The number stays used.
 
-Payments and overdue tracking come next.
+## Payments
+
+`POST /api/invoices/{id}/payments` records a payment (amount, date, method,
+reference) against a SENT or OVERDUE invoice; partial payments are fine and the
+invoice becomes PAID when its balance reaches zero. Overpayment is rejected.
+The invoice row is locked while a payment is recorded, so concurrent payments
+can't overpay. `GET /api/invoices/{id}/payments` lists them. Payments are
+append-only for now.
+
+Overdue tracking and the billing summary come next.
 
 ## Platform admin
 

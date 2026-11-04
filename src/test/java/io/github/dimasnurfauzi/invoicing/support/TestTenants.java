@@ -105,6 +105,31 @@ public final class TestTenants {
     return (String) response.getBody().get("id");
   }
 
+  /** Creates and issues a one-line invoice (total 111000.00); returns its id. */
+  public String createIssuedInvoice(String token, String customerId) {
+    String id = createInvoice(token, customerId);
+    ResponseEntity<Map> issued =
+        call(HttpMethod.POST, "/api/invoices/" + id + "/issue", token, null, Map.class);
+    assertThat(issued.getStatusCode()).isEqualTo(HttpStatus.OK);
+    return id;
+  }
+
+  /** Records a bank-transfer payment dated today. */
+  public ResponseEntity<Map> pay(String token, String invoiceId, String amount) {
+    return call(
+        HttpMethod.POST,
+        "/api/invoices/" + invoiceId + "/payments",
+        token,
+        Map.of(
+            "amount",
+            amount,
+            "paidOn",
+            java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString(),
+            "method",
+            "BANK_TRANSFER"),
+        Map.class);
+  }
+
   /** {@code uriVariables} fill {@code {placeholders}} in {@code path} (URL-encoded). */
   public <T> ResponseEntity<T> call(
       HttpMethod method,

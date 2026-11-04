@@ -67,6 +67,9 @@ public class InvoiceIssueService {
       if (invoice.isDraft()) {
         throw new ConflictException("Drafts aren't voided; delete the draft instead");
       }
+      if (invoice.getAmountPaid().signum() > 0) {
+        throw new ConflictException("Invoice has payments recorded; it can't be voided");
+      }
       invoice.voidInvoice(reason.trim(), clock.instant());
       return InvoiceResponse.from(invoices.saveAndFlush(invoice));
     });

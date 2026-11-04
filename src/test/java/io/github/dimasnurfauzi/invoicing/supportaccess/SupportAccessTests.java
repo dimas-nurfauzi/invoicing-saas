@@ -226,6 +226,28 @@ class SupportAccessTests {
   }
 
   @Test
+  void paymentsSupportViewNeedsGrant() {
+    String customerId = api.createCustomer(tenantA.adminToken(), "Paying Customer");
+    String invoiceId = api.createIssuedInvoice(tenantA.adminToken(), customerId);
+    api.pay(tenantA.adminToken(), invoiceId, "11000");
+    String path =
+        "/api/platform/tenants/"
+            + tenantA.tenantId()
+            + "/support/invoices/"
+            + invoiceId
+            + "/payments?reason=TICKET-11";
+
+    assertThat(api.call(HttpMethod.GET, path, platformToken, null, String.class).getStatusCode())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+    grant(tenantA, 1);
+    ResponseEntity<List> payments = api.call(HttpMethod.GET, path, platformToken, null, List.class);
+    assertThat(payments.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat((List<Map<String, Object>>) payments.getBody())
+        .extracting(p -> p.get("amount"))
+        .containsExactly("11000.00");
+  }
+
+  @Test
   void unknownTenantIs404() {
     ResponseEntity<String> response =
         api.call(

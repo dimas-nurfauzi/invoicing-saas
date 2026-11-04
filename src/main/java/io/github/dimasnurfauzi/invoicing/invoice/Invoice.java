@@ -1,5 +1,7 @@
 package io.github.dimasnurfauzi.invoicing.invoice;
 
+import io.github.dimasnurfauzi.invoicing.common.BadRequestException;
+import io.github.dimasnurfauzi.invoicing.common.ConflictException;
 import io.github.dimasnurfauzi.invoicing.customer.Customer;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -77,6 +79,12 @@ public class Invoice {
 
   @Column(nullable = false, precision = 19, scale = 2)
   private BigDecimal total;
+
+  @Column(name = "amount_paid", nullable = false, precision = 19, scale = 2)
+  private BigDecimal amountPaid = BigDecimal.ZERO.setScale(InvoiceCalculator.SCALE);
+
+  @Column(name = "paid_at")
+  private Instant paidAt;
 
   @Column(name = "issued_at")
   private Instant issuedAt;
@@ -178,6 +186,35 @@ public class Invoice {
     this.billToTaxId = customer.getTaxId();
   }
 
+  /** Total minus what has been paid; never negative. */
+  public BigDecimal getBalanceDue() {
+    return total.subtract(amountPaid);
+  }
+
+  /**
+   * Records a payment of {@code amount} (> 0, at most the balance due). SENT/OVERDUE only; when the
+   * balance reaches zero the invoice becomes PAID. The caller must hold the invoice row lock
+   * ({@link InvoiceRepository#lockById}) so concurrent payments can't overpay.
+   */
+  public void applyPayment(BigDecimal amount, Instant now) {
+    if (status != InvoiceStatus.SENT && status != InvoiceStatus.OVERDUE) {
+      throw new ConflictException(
+          "Payments can only be recorded for SENT or OVERDUE invoices, not " + status);
+    }
+    if (amount.signum() <= 0) {
+      throw new BadRequestException("Payment amount must be positive");
+    }
+    if (amount.compareTo(getBalanceDue()) > 0) {
+      throw new BadRequestException(
+          "Payment exceeds the balance due of " + getBalanceDue().toPlainString());
+    }
+    amountPaid = amountPaid.add(amount);
+    if (getBalanceDue().compareTo(BigDecimal.ZERO) == 0) {
+      transitionTo(InvoiceStatus.PAID);
+      paidAt = now;
+    }
+  }
+
   /** SENT/OVERDUE → VOID. The number stays used, so the sequence has no gaps. */
   void voidInvoice(String reason, Instant now) {
     transitionTo(InvoiceStatus.VOID);
@@ -238,6 +275,14 @@ public class Invoice {
 
   public BigDecimal getTotal() {
     return total;
+  }
+
+  public BigDecimal getAmountPaid() {
+    return amountPaid;
+  }
+
+  public Instant getPaidAt() {
+    return paidAt;
   }
 
   public Instant getIssuedAt() {
