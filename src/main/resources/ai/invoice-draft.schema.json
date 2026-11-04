@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "description": "A draft invoice extracted from a free-text billing request. Use an empty string for anything the request doesn't state.",
+  "properties": {
+    "customerName": {
+      "type": "string",
+      "description": "Name of the customer being billed, exactly as written; empty if not stated."
+    },
+    "issueDate": {
+      "type": "string",
+      "description": "Invoice date as YYYY-MM-DD; empty if not stated."
+    },
+    "dueDate": {
+      "type": "string",
+      "description": "Due date as YYYY-MM-DD; resolve relative terms like '30 hari' from the issue date or today; empty if not stated."
+    },
+    "currency": {
+      "type": "string",
+      "description": "3-letter ISO currency code in upper case (e.g. IDR, USD); empty if not stated."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Other billing remarks worth keeping on the invoice (payment terms, PO number); empty if none."
+    },
+    "lines": {
+      "type": "array",
+      "description": "One entry per billed item.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {"type": "string", "description": "What is billed."},
+          "quantity": {"type": "string", "description": "Plain decimal with a dot, e.g. 2 or 1.5."},
+          "unitPrice": {"type": "string", "description": "Price per unit as a plain decimal with a dot and no thousands separators, e.g. 1500000."},
+          "discountPercent": {"type": "string", "description": "Discount in percent, e.g. 10; 0 if none."},
+          "taxRatePercent": {"type": "string", "description": "Tax rate in percent, e.g. 11 for PPN 11%; 0 if none."}
+        },
+        "required": ["description", "quantity", "unitPrice", "discountPercent", "taxRatePercent"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["customerName", "issueDate", "dueDate", "currency", "notes", "lines"],
+  "additionalProperties": false
+}

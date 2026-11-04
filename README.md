@@ -107,6 +107,23 @@ payment arriving at the same moment is never overwritten.
 total billed, paid, outstanding and overdue, plus invoice counts per status.
 Drafts and voided invoices are not billed.
 
+## AI invoice drafts
+
+`POST /api/invoices/ai-draft` with `{"text": "Tagih PT Sinar Terang: desain logo
+1,5jt, PPN 11%, jatuh tempo 30 hari"}` returns a **draft** (nothing is saved):
+customer (matched by exact name within your tenant), dates, currency, lines, a
+preview total and warnings for anything it had to assume. Review it and send it
+to `POST /api/invoices` to save it, with the same validation as manual entry.
+
+Under the hood: Claude (`claude-opus-5-5`, effort `low`, via the official Java
+SDK) with structured outputs constrained to `ai/invoice-draft.schema.json`. The
+output is treated as untrusted: parsed, validated against the same JSON schema,
+then against the manual-entry line rules; invalid output is retried (3 attempts
+in total) with the errors in the prompt, then the endpoint fails with 502.
+Refusals return 422 (after the API's server-side fallback). Only the pasted text
+and today's date are sent; customer data never is. Set `ANTHROPIC_API_KEY` to
+enable it (503 without it); tests use a scripted fake and never call the API.
+
 ## Platform admin
 
 The SaaS operator has a separate account type (not a tenant role). Set
