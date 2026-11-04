@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,16 +19,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Invoices of the caller's tenant. ADMIN and STAFF may create, edit and delete drafts. */
+/** Invoices of the caller's tenant. ADMIN and STAFF manage drafts and issue; only ADMIN voids. */
 @RestController
 @RequestMapping("/api/invoices")
 @Tag(name = "Invoices")
 public class InvoiceController {
 
   private final InvoiceService service;
+  private final InvoiceIssueService issueService;
 
-  public InvoiceController(InvoiceService service) {
+  public InvoiceController(InvoiceService service, InvoiceIssueService issueService) {
     this.service = service;
+    this.issueService = issueService;
   }
 
   @PostMapping
@@ -61,5 +64,19 @@ public class InvoiceController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@PathVariable UUID id) {
     service.delete(id);
+  }
+
+  /** DRAFT → SENT: assigns the next INV-<year>-NNNN number and freezes the bill-to data. */
+  @PostMapping("/{id}/issue")
+  public InvoiceResponse issue(@PathVariable UUID id) {
+    return issueService.issue(id);
+  }
+
+  /** SENT/OVERDUE → VOID with a reason. The number stays used. ADMIN only. */
+  @PostMapping("/{id}/void")
+  @PreAuthorize("hasRole('ADMIN')")
+  public InvoiceResponse voidInvoice(
+      @PathVariable UUID id, @Valid @RequestBody VoidRequest request) {
+    return issueService.voidInvoice(id, request.reason());
   }
 }

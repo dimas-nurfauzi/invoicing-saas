@@ -1,13 +1,37 @@
 package io.github.dimasnurfauzi.invoicing.invoice;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
- * Lifecycle: DRAFT → SENT → PAID, OVERDUE set by a scheduled job, VOID for cancelled sent invoices.
- * Only DRAFT is reachable so far; the transitions come with issuing and payments.
+ * Lifecycle and the only allowed transitions:
+ *
+ * <pre>
+ * DRAFT   → SENT                (issue: gets a number)
+ * SENT    → PAID, OVERDUE, VOID
+ * OVERDUE → PAID, VOID
+ * PAID, VOID: final
+ * </pre>
+ *
+ * Drafts are deleted, not voided. PAID and OVERDUE are reached by payments and the overdue job.
  */
 public enum InvoiceStatus {
   DRAFT,
   SENT,
   PAID,
   OVERDUE,
-  VOID
+  VOID;
+
+  public Set<InvoiceStatus> allowedNext() {
+    return switch (this) {
+      case DRAFT -> EnumSet.of(SENT);
+      case SENT -> EnumSet.of(PAID, OVERDUE, VOID);
+      case OVERDUE -> EnumSet.of(PAID, VOID);
+      case PAID, VOID -> EnumSet.noneOf(InvoiceStatus.class);
+    };
+  }
+
+  public boolean canTransitionTo(InvoiceStatus next) {
+    return allowedNext().contains(next);
+  }
 }
