@@ -73,6 +73,15 @@ curl -X POST localhost:8080/api/users -H "Authorization: Bearer <accessToken>" \
 hidden from lists unless `includeArchived=true`, but stay readable by id so
 invoices can keep referencing them.
 
+## Invoices (drafts)
+
+`/api/invoices`: create a draft for a customer with 1–100 lines (quantity, unit
+price, discount %, tax %), list (paged, filter by `status` / `customerId`), get,
+replace (`PUT`, drafts only) and delete (drafts only). Totals are computed with
+`BigDecimal`, rounded HALF_UP to 2 decimals per line and then summed; money is
+returned as strings. Issuing (numbers like `INV-2026-0001`), payments and
+overdue tracking come next.
+
 ## Platform admin
 
 The SaaS operator has a separate account type (not a tenant role). Set

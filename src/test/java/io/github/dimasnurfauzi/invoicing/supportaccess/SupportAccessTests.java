@@ -190,6 +190,42 @@ class SupportAccessTests {
   }
 
   @Test
+  void invoicesSupportViewsNeedGrantAndAreLogged() {
+    String customerId = api.createCustomer(tenantA.adminToken(), "Invoice Customer");
+    String invoiceId = api.createInvoice(tenantA.adminToken(), customerId);
+    String base = "/api/platform/tenants/" + tenantA.tenantId() + "/support/invoices";
+
+    assertThat(
+            api.call(HttpMethod.GET, base + "?reason=TICKET-10", platformToken, null, String.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+
+    grant(tenantA, 1);
+    ResponseEntity<Map> list =
+        api.call(HttpMethod.GET, base + "?reason=TICKET-10", platformToken, null, Map.class);
+    ResponseEntity<Map> detail =
+        api.call(
+            HttpMethod.GET,
+            base + "/" + invoiceId + "?reason=TICKET-10",
+            platformToken,
+            null,
+            Map.class);
+
+    assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat((List<Map<String, Object>>) list.getBody().get("content"))
+        .extracting(i -> i.get("id"))
+        .containsExactly(invoiceId);
+    assertThat(detail.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(detail.getBody()).containsEntry("total", "111000.00");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM support_access_logs WHERE tenant_id = ?::uuid"
+                    + " AND resource LIKE 'GET invoice%'",
+                Integer.class, tenantA.tenantId()))
+        .isEqualTo(2);
+  }
+
+  @Test
   void unknownTenantIs404() {
     ResponseEntity<String> response =
         api.call(

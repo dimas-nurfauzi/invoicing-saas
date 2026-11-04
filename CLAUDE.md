@@ -78,6 +78,9 @@ API conventions:
 - Business records referenced by others (customers, later invoices) are
   archived (`archived_at`), not hard-deleted.
 - Errors are RFC 9457 `ProblemDetail` via `GlobalExceptionHandler`.
+- Money in JSON responses is a string (`"1500000.00"`, `@JsonFormat(shape = STRING)`);
+  requests accept strings or numbers. Amounts are always computed server-side
+  (`invoice.InvoiceCalculator`), never taken from the request.
 
 ## Non-negotiable rules
 
