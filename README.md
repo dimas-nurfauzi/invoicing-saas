@@ -162,6 +162,22 @@ Another tenant's id returns the same 404 as an id that doesn't exist.
 PostgreSQL is published on host port **5433** (not 5432) so it can run next
 to another local PostgreSQL. Override with `POSTGRES_PORT` / `DB_URL` in `.env`.
 
+### Run the whole stack with Docker
+
+```bash
+cp .env.example .env        # set JWT_SECRET (required), optionally ANTHROPIC_API_KEY etc.
+docker compose --profile app up --build
+curl localhost:8080/actuator/health
+```
+
+The `app` service only starts with `--profile app`; a plain `docker compose up -d`
+still runs just PostgreSQL for development in the IDE. Set `APP_PORT` if 8080 is
+taken. The image (`Dockerfile`) is a multi-stage build: JDK + Maven wrapper to
+build, JRE only to run, Spring Boot layers, non-root user. It has no `curl`, so
+there's no Docker `HEALTHCHECK`; platforms should probe
+`/actuator/health/liveness` and `/actuator/health/readiness`. CI builds the image
+after the tests pass (not pushed anywhere yet).
+
 ### Docker via Colima (macOS)
 
 Testcontainers looks for `/var/run/docker.sock` by default. With Colima,

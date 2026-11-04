@@ -30,3 +30,23 @@ jobs:
 
       - name: Build and test
         run: ./mvnw -B verify
+
+  docker:
+    # The image must build from a commit that passed the tests. Built only, not pushed:
+    # pushing to a registry comes with deployment.
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: invoicing-saas:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

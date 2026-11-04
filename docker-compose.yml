@@ -17,5 +17,28 @@ services:
       timeout: 5s
       retries: 10
 
+  # Full stack: `docker compose --profile app up --build`. Not started by a plain
+  # `docker compose up -d`, which keeps running only PostgreSQL for local development.
+  app:
+    profiles: ["app"]
+    build: .
+    image: invoicing-saas:local
+    container_name: invoicing-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Inside the compose network the database is `postgres:5432`, not localhost:5433.
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-invoicing}
+      DB_USERNAME: ${POSTGRES_USER:-invoicing}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-invoicing}
+      # From .env or the shell. Required: the app refuses to start without it.
+      JWT_SECRET: ${JWT_SECRET:-}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
 volumes:
   invoicing-pgdata:
