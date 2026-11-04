@@ -70,10 +70,16 @@ public final class TestTenants {
     return (String) response.getBody().get("id");
   }
 
+  /** {@code uriVariables} fill {@code {placeholders}} in {@code path} (URL-encoded). */
   public <T> ResponseEntity<T> call(
-      HttpMethod method, String path, String token, Object body, Class<T> type) {
+      HttpMethod method,
+      String path,
+      String token,
+      Object body,
+      Class<T> type,
+      Object... uriVariables) {
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(token);
-    return rest.exchange(path, method, new HttpEntity<>(body, headers), type);
+    return rest.exchange(path, method, new HttpEntity<>(body, headers), type, uriVariables);
   }
 }

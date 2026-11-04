@@ -77,8 +77,17 @@ token that works only under `/api/platform/**`:
 - suspend / activate a tenant: a suspended tenant can't log in and its existing
   tokens are rejected immediately
 
-Platform admins can't read tenant business data, and tenant tokens can't call
-the platform API.
+Platform admins can't read tenant business data on their own, and tenant tokens
+can't call the platform API.
+
+### Support access
+
+When a tenant needs help, its ADMIN grants time-limited access
+(`POST /api/support-access`, 1–72 hours) and can revoke it any time. A platform
+admin can then read that tenant's data through `/api/platform/tenants/{id}/support/...`
+with a required `reason` (e.g. a ticket number). Reads are read-only at the
+database level, and every access is logged; the tenant sees the log at
+`GET /api/support-access/logs`.
 
 Every response carries an `X-Request-Id`; log lines include `req=`, `tenant=`
 and `user=` so a support ticket can be traced without opening tenant data.

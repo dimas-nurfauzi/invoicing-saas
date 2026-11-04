@@ -65,6 +65,7 @@ io.github.dimasnurfauzi.invoicing
 ├── summary/
 ├── ai/          # Claude API client, schema validation, draft extraction
 ├── platform/    # platform admin (SaaS operator): login, tenant list/suspend
+├── supportaccess/ # tenant-granted, audited, read-only support access
 └── common/      # errors, money helpers, base entities, request id
 ```
 
@@ -107,8 +108,11 @@ How it's implemented (Hibernate partitioned multi-tenancy):
 - `/api/platform/**` has its own security chain that accepts only platform
   tokens; the tenant chain rejects tokens with a `scope`. Keep it that way.
 - Platform endpoints work on the `tenants` table only. They never read tenant
-  business data and never bypass the tenant filter; support access to tenant
-  data must be explicit (tenant-granted, read-only, audited), not a bypass.
+  business data and never bypass the tenant filter.
+- The only way platform code reads tenant-owned data is
+  `PlatformSupportService.readAs`: active grant from the tenant required, access
+  log written first, then `callAs(tenantId)` in a read-only transaction
+  (PostgreSQL rejects writes). New support views must go through it.
 - The first platform admin comes from `PLATFORM_ADMIN_EMAIL` /
   `PLATFORM_ADMIN_PASSWORD` at startup; there is no default account.
 
