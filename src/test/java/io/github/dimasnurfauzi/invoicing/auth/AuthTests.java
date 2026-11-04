@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.within;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import io.github.dimasnurfauzi.invoicing.TestcontainersConfiguration;
+import io.github.dimasnurfauzi.invoicing.security.config.JwtProperties;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

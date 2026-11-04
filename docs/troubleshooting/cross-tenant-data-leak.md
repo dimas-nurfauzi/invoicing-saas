@@ -60,7 +60,7 @@ Request ── Bearer JWT ──▶ BearerTokenAuthenticationFilter (signature, 
 ```
 
 - **Source of the tenant:** only the `tenant_id` claim of a validated JWT
-  (`tenant/TenantContextFilter`). Request bodies with `tenantId` are ignored;
+  (`tenant/context/TenantContextFilter`). Request bodies with `tenantId` are ignored;
   there is no tenant parameter on any repository method.
 - **Fail closed:** with no tenant in context, `TenantIdentifierResolver` returns
   `00000000-0000-0000-0000-000000000000`, which matches no row. Reads come back

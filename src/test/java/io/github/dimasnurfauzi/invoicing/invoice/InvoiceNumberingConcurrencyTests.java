@@ -3,6 +3,7 @@ package io.github.dimasnurfauzi.invoicing.invoice;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.dimasnurfauzi.invoicing.TestcontainersConfiguration;
+import io.github.dimasnurfauzi.invoicing.invoice.domain.InvoiceNumbers;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants.TenantSession;
 import java.util.ArrayList;

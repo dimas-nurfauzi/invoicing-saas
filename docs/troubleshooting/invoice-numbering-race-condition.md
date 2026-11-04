@@ -47,7 +47,7 @@ CREATE TABLE invoice_number_counters (
 );
 ```
 
-`POST /api/invoices/{id}/issue` (`invoice/InvoiceIssueService`):
+`POST /api/invoices/{id}/issue` (`invoice/service/InvoiceIssueService`):
 
 1. Read the invoice and check it can be issued (draft, customer not archived).
    Short transaction. Nothing is reserved yet.

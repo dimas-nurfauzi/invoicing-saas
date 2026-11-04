@@ -3,7 +3,7 @@ package io.github.dimasnurfauzi.invoicing.summary;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.dimasnurfauzi.invoicing.TestcontainersConfiguration;
-import io.github.dimasnurfauzi.invoicing.invoice.OverdueInvoiceJob;
+import io.github.dimasnurfauzi.invoicing.invoice.job.OverdueInvoiceJob;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants.TenantSession;
 import java.time.LocalDate;

@@ -1,6 +1,6 @@
 package io.github.dimasnurfauzi.invoicing.support;
 
-import io.github.dimasnurfauzi.invoicing.ai.InvoiceDraftModel;
+import io.github.dimasnurfauzi.invoicing.ai.client.InvoiceDraftModel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;

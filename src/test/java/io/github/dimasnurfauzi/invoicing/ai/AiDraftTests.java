@@ -3,7 +3,7 @@ package io.github.dimasnurfauzi.invoicing.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.dimasnurfauzi.invoicing.TestcontainersConfiguration;
-import io.github.dimasnurfauzi.invoicing.ai.InvoiceDraftModel.Reply;
+import io.github.dimasnurfauzi.invoicing.ai.client.InvoiceDraftModel.Reply;
 import io.github.dimasnurfauzi.invoicing.support.ScriptedInvoiceDraftModel;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants;
 import io.github.dimasnurfauzi.invoicing.support.TestTenants.TenantSession;
