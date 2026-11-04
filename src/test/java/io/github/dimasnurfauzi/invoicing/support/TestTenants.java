@@ -2,6 +2,7 @@ package io.github.dimasnurfauzi.invoicing.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -74,6 +75,32 @@ public final class TestTenants {
   public String createCustomer(String token, String name) {
     ResponseEntity<Map> response =
         call(HttpMethod.POST, "/api/customers", token, Map.of("name", name), Map.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    return (String) response.getBody().get("id");
+  }
+
+  /** A one-line draft invoice body: 1 × 100000.00 with 11% tax (total 111000.00). */
+  public static Map<String, Object> invoiceBody(String customerId) {
+    return Map.of(
+        "customerId",
+        customerId,
+        "issueDate",
+        "2026-11-01",
+        "dueDate",
+        "2026-11-30",
+        "lines",
+        List.of(
+            Map.of(
+                "description", "Jasa desain",
+                "quantity", "1",
+                "unitPrice", "100000",
+                "taxRatePercent", "11")));
+  }
+
+  /** Creates a draft invoice in the token's tenant and returns its id. */
+  public String createInvoice(String token, String customerId) {
+    ResponseEntity<Map> response =
+        call(HttpMethod.POST, "/api/invoices", token, invoiceBody(customerId), Map.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     return (String) response.getBody().get("id");
   }

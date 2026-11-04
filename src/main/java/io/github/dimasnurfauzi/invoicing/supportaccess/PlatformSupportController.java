@@ -3,6 +3,8 @@ package io.github.dimasnurfauzi.invoicing.supportaccess;
 import io.github.dimasnurfauzi.invoicing.auth.UserResponse;
 import io.github.dimasnurfauzi.invoicing.common.PageResponse;
 import io.github.dimasnurfauzi.invoicing.customer.CustomerResponse;
+import io.github.dimasnurfauzi.invoicing.invoice.InvoiceResponse;
+import io.github.dimasnurfauzi.invoicing.invoice.InvoiceSummaryResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -52,5 +54,26 @@ public class PlatformSupportController {
       @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
     return service.listCustomers(
         tenantId, UUID.fromString(jwt.getSubject()), reason.trim(), page, size);
+  }
+
+  @GetMapping("/invoices")
+  public PageResponse<InvoiceSummaryResponse> invoices(
+      @PathVariable UUID tenantId,
+      @RequestParam @NotBlank @Size(min = 3, max = 200) String reason,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+      @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+    return service.listInvoices(
+        tenantId, UUID.fromString(jwt.getSubject()), reason.trim(), page, size);
+  }
+
+  @GetMapping("/invoices/{invoiceId}")
+  public InvoiceResponse invoice(
+      @PathVariable UUID tenantId,
+      @PathVariable UUID invoiceId,
+      @RequestParam @NotBlank @Size(min = 3, max = 200) String reason,
+      @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+    return service.getInvoice(
+        tenantId, UUID.fromString(jwt.getSubject()), reason.trim(), invoiceId);
   }
 }

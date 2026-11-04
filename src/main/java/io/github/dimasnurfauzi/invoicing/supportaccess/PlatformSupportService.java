@@ -7,6 +7,9 @@ import io.github.dimasnurfauzi.invoicing.common.NotFoundException;
 import io.github.dimasnurfauzi.invoicing.common.PageResponse;
 import io.github.dimasnurfauzi.invoicing.customer.CustomerResponse;
 import io.github.dimasnurfauzi.invoicing.customer.CustomerService;
+import io.github.dimasnurfauzi.invoicing.invoice.InvoiceResponse;
+import io.github.dimasnurfauzi.invoicing.invoice.InvoiceService;
+import io.github.dimasnurfauzi.invoicing.invoice.InvoiceSummaryResponse;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantContext;
 import io.github.dimasnurfauzi.invoicing.tenant.TenantRepository;
 import java.time.Clock;
@@ -45,6 +48,7 @@ public class PlatformSupportService {
   private final SupportAccessLogRepository logs;
   private final UserRepository users;
   private final CustomerService customers;
+  private final InvoiceService invoices;
   private final TransactionTemplate writeTransaction;
   private final TransactionTemplate readOnlyTransaction;
   private final Clock clock = Clock.systemUTC();
@@ -55,12 +59,14 @@ public class PlatformSupportService {
       SupportAccessLogRepository logs,
       UserRepository users,
       CustomerService customers,
+      InvoiceService invoices,
       PlatformTransactionManager transactionManager) {
     this.tenants = tenants;
     this.grants = grants;
     this.logs = logs;
     this.users = users;
     this.customers = customers;
+    this.invoices = invoices;
     this.writeTransaction = new TransactionTemplate(transactionManager);
     this.readOnlyTransaction = new TransactionTemplate(transactionManager);
     this.readOnlyTransaction.setReadOnly(true);
@@ -89,6 +95,26 @@ public class PlatformSupportService {
                 customers.search(
                     null, true, PageRequest.of(page, size, CustomerService.DEFAULT_SORT)),
                 CustomerResponse::from));
+  }
+
+  public PageResponse<InvoiceSummaryResponse> listInvoices(
+      UUID tenantId, UUID platformAdminId, String reason, int page, int size) {
+    return readAs(
+        tenantId,
+        platformAdminId,
+        reason,
+        "GET invoices",
+        () -> invoices.list(null, null, page, size));
+  }
+
+  public InvoiceResponse getInvoice(
+      UUID tenantId, UUID platformAdminId, String reason, UUID invoiceId) {
+    return readAs(
+        tenantId,
+        platformAdminId,
+        reason,
+        "GET invoice " + invoiceId,
+        () -> invoices.get(invoiceId));
   }
 
   /** The only way platform code may read tenant-owned data. */
