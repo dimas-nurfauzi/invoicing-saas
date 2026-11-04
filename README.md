@@ -1,187 +1,116 @@
 # invoicing-saas
 
-Multi-tenant invoicing API built with Java 21 and Spring Boot 3 — developed
-with an AI coding agent (Claude Code), with every change going through a
-branch and pull request.
+Multi-tenant invoicing API for small businesses: customers, invoices with line
+items, tax and discount, gapless invoice numbers, partial payments, overdue
+tracking, a billing summary, and an AI feature that turns a pasted billing
+request into a draft invoice.
 
-> 🚧 Work in progress. See the roadmap below.
+Built with Java 21 and Spring Boot 3, **with an AI coding agent (Claude Code)**:
+every change went through a plan I approved, a branch and a pull request that
+records what I directed and what I corrected.
 
-## Why this repo exists
+**Status:** MVP complete (15 PRs). Next: deployment and a TypeScript frontend.
 
-This is a portfolio project showing how I work with an AI coding agent:
-what I direct it to do, what I review and correct, and how I debug the
-problems that come up. Each PR description records both.
+### Highlights
 
-## Features (MVP)
+- **Tenant isolation enforced in one place** (Hibernate `@TenantId`), fail-closed,
+  no bypass; another tenant's data is a 404. Proven by isolation tests that fail
+  7/7 when the filter is bypassed. → [write-up](docs/troubleshooting/cross-tenant-data-leak.md)
+- **Gapless invoice numbers under concurrency** (row-locked counter, 20 parallel
+  issues → exactly `0001..0020`), and a payment **lost update** found by a
+  mutation check that a CHECK constraint didn't catch. → [write-up](docs/troubleshooting/invoice-numbering-race-condition.md)
+- **Money done right**: `BigDecimal` end to end, HALF_UP per line then summed,
+  money as JSON strings. → [write-up](docs/troubleshooting/money-precision-and-rounding.md)
+- **AI with guard rails**: Claude output is untrusted, validated against a JSON
+  schema and the same rules as manual entry, retried, never saved without review.
+- **Operator features without a back door**: platform admins suspend tenants but
+  only read tenant data with the tenant's time-limited, audited, read-only grant.
+- **181 tests** on a real PostgreSQL (Testcontainers), including isolation,
+  concurrency and mutation-checked tests; CI lints, tests and builds the image.
 
-- Tenant registration and JWT login (admin / staff)
-- Customers, invoices with line items, tax and discount
-- Invoice status: draft, sent, paid, overdue (scheduled job)
-- Partial payments
-- Sequential invoice numbers per tenant (`INV-2026-0001`)
-- Billing summary: billed, paid, outstanding
-- AI: paste a billing request → Claude extracts a draft invoice (schema-validated,
-  reviewed before saving)
+## Contents
 
-## Stack
+- [Architecture](#architecture)
+- [Quick start](#quick-start)
+- [API overview](#api-overview)
+- [Configuration](#configuration)
+- [How it works](#how-it-works)
+- [Testing](#testing)
+- [Troubleshooting write-ups](#troubleshooting-write-ups)
+- [Built with an AI agent](#built-with-an-ai-agent)
+- [Limitations and next steps](#limitations-and-next-steps)
 
-Java 21 · Spring Boot 3 · Spring Security + JWT · PostgreSQL · Flyway ·
-JUnit 5 + Testcontainers · Docker Compose · GitHub Actions · Actuator + Micrometer
+## Architecture
 
-## Running locally
+```mermaid
+flowchart LR
+    client[Client / Swagger UI] -->|Bearer JWT| sec
+
+    subgraph app[Spring Boot app]
+        direction TB
+        sec[Security chains<br/>tenant API · platform API] --> tf[TenantContextFilter<br/>tenant_id from JWT]
+        tf --> ctl[Controllers] --> svc[Services]
+        svc --> repo[Repositories]
+        job[Overdue job<br/>callAs per tenant] --> repo
+        svc --> ai[AI client]
+    end
+
+    repo -->|"Hibernate @TenantId<br/>tenant_id = ? on every query"| db[(PostgreSQL<br/>Flyway)]
+    ai -->|structured outputs| claude[Claude API]
+```
+
+- **Stack:** Java 21 · Spring Boot 3.5 · Spring Security (stateless JWT, HS256) ·
+  Spring Data JPA / Hibernate 6.6 · PostgreSQL 17 · Flyway · springdoc OpenAPI ·
+  Anthropic Java SDK · JUnit 5 + Testcontainers · Docker · GitHub Actions ·
+  Actuator + Micrometer (Prometheus)
+- **Package layout:** by feature, then by kind:
+
+```
+io.github.dimasnurfauzi.invoicing
+├── security/        config/ (two filter chains, JWT), jwt/
+├── auth/            login, /api/me
+├── user/            tenant users (ADMIN / STAFF)
+├── tenant/          registration; context/ (TenantContext, filter, Hibernate resolver)
+├── customer/  invoice/  payment/  summary/
+├── ai/              client/ (Claude), service/ (draft, schema, validation, prompt)
+├── platform/        SaaS operator: login, tenants, suspend
+├── supportaccess/   tenant-granted, audited, read-only support access
+└── common/          exception/, config/, web/, dto/
+    each feature: controller/ service/ repository/ entity/ dto/ exception/ (as needed)
+```
+
+## Quick start
+
+### Everything in Docker
+
+```bash
+cp .env.example .env                     # set JWT_SECRET (at least 32 bytes)
+docker compose --profile app up --build
+```
+
+Then open <http://localhost:8080/swagger-ui.html>. Set `APP_PORT` if 8080 is
+taken. The `app` service only starts with `--profile app`; a plain
+`docker compose up -d` runs just PostgreSQL.
+
+### Local development (IDE)
 
 Prerequisites: JDK 21, Docker.
 
 ```bash
 cp .env.example .env
-docker compose up -d        # PostgreSQL 17 on localhost:5433
-set -a; source .env; set +a # export JWT_SECRET etc. into this shell
+docker compose up -d                     # PostgreSQL 17 on localhost:5433
+set -a; source .env; set +a              # the app doesn't read .env itself
 ./mvnw spring-boot:run
-curl localhost:8080/actuator/health
-./mvnw verify               # Spotless lint + tests (Testcontainers)
+./mvnw verify                            # Spotless lint + all tests (needs Docker)
 ```
 
-`JWT_SECRET` is required (at least 32 bytes); the app refuses to start
-without it. The app does not read `.env` itself, so export it first — or,
-in IntelliJ, add `JWT_SECRET=...` under Run Configuration → Environment
-variables. Tests use their own value from `src/test/resources/application-test.yml`.
+In IntelliJ, put `JWT_SECRET=...` (and optionally the other variables) under
+Run Configuration → Environment variables, without spaces after `;`.
 
-### Trying the API
+<details>
+<summary>Docker via Colima (macOS)</summary>
 
-Swagger UI: <http://localhost:8080/swagger-ui.html> (spec at `/v3/api-docs`).
-Register a tenant, call login, click **Authorize** and paste the `accessToken`.
-Disable both in production with `SPRINGDOC_ENABLED=false`.
-
-Or with curl:
-
-```bash
-curl -X POST localhost:8080/api/tenants -H 'Content-Type: application/json' \
-  -d '{"tenantName":"Toko Maju","tenantSlug":"toko-maju","adminEmail":"owner@tokomaju.id","adminPassword":"rahasia-123"}'
-curl -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
-  -d '{"tenantSlug":"toko-maju","email":"owner@tokomaju.id","password":"rahasia-123"}'
-curl localhost:8080/api/me -H "Authorization: Bearer <accessToken>"
-curl localhost:8080/api/users -H "Authorization: Bearer <accessToken>"
-curl -X POST localhost:8080/api/users -H "Authorization: Bearer <accessToken>" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"staff@tokomaju.id","password":"rahasia-456","role":"STAFF"}'
-```
-
-## Customers
-
-`/api/customers`: create, list (paged, `q` searches name/email), get, update
-(`PUT`), archive (`DELETE`, ADMIN only) and restore. Archived customers are
-hidden from lists unless `includeArchived=true`, but stay readable by id so
-invoices can keep referencing them.
-
-## Invoices
-
-`/api/invoices`: create a draft for a customer with 1–100 lines (quantity, unit
-price, discount %, tax %), list (paged, filter by `status` / `customerId`), get,
-replace (`PUT`, drafts only) and delete (drafts only). Totals are computed with
-`BigDecimal`, rounded HALF_UP to 2 decimals per line and then summed; money is
-returned as strings.
-
-- `POST /api/invoices/{id}/issue`: DRAFT → SENT, assigns the next number
-  `INV-<year>-NNNN` (per tenant and year, gapless and unique under concurrency
-  via a row-locked counter) and freezes the customer's billing data.
-- `POST /api/invoices/{id}/void` (ADMIN, with a reason): SENT/OVERDUE → VOID.
-  The number stays used.
-
-## Payments
-
-`POST /api/invoices/{id}/payments` records a payment (amount, date, method,
-reference) against a SENT or OVERDUE invoice; partial payments are fine and the
-invoice becomes PAID when its balance reaches zero. Overpayment is rejected.
-The invoice row is locked while a payment is recorded, so concurrent payments
-can't overpay. `GET /api/invoices/{id}/payments` lists them. Payments are
-append-only for now.
-
-## Overdue job and summary
-
-A daily job (`OVERDUE_CRON`, default 00:05 in `OVERDUE_ZONE`, default
-Asia/Jakarta) marks SENT invoices past their due date as OVERDUE. It runs per
-tenant through the normal tenant filter and locks the rows it changes, so a
-payment arriving at the same moment is never overwritten.
-
-`GET /api/summary?from=&to=` (optional issue-date range) returns, per currency:
-total billed, paid, outstanding and overdue, plus invoice counts per status.
-Drafts and voided invoices are not billed.
-
-## AI invoice drafts
-
-`POST /api/invoices/ai-draft` with `{"text": "Tagih PT Sinar Terang: desain logo
-1,5jt, PPN 11%, jatuh tempo 30 hari"}` returns a **draft** (nothing is saved):
-customer (matched by exact name within your tenant), dates, currency, lines, a
-preview total and warnings for anything it had to assume. Review it and send it
-to `POST /api/invoices` to save it, with the same validation as manual entry.
-
-Under the hood: Claude (`claude-opus-5-5`, effort `low`, via the official Java
-SDK) with structured outputs constrained to `ai/invoice-draft.schema.json`. The
-output is treated as untrusted: parsed, validated against the same JSON schema,
-then against the manual-entry line rules; invalid output is retried (3 attempts
-in total) with the errors in the prompt, then the endpoint fails with 502.
-Refusals return 422 (after the API's server-side fallback). Only the pasted text
-and today's date are sent; customer data never is. Set `ANTHROPIC_API_KEY` to
-enable it (503 without it); tests use a scripted fake and never call the API.
-
-## Platform admin
-
-The SaaS operator has a separate account type (not a tenant role). Set
-`PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD` (12+ chars) and the first
-admin is created at startup. `POST /api/platform/auth/login` returns a platform
-token that works only under `/api/platform/**`:
-
-- list / view tenants, create a tenant (also when `TENANT_SIGNUP_ENABLED=false`)
-- suspend / activate a tenant: a suspended tenant can't log in and its existing
-  tokens are rejected immediately
-
-Platform admins can't read tenant business data on their own, and tenant tokens
-can't call the platform API.
-
-### Support access
-
-When a tenant needs help, its ADMIN grants time-limited access
-(`POST /api/support-access`, 1–72 hours) and can revoke it any time. A platform
-admin can then read that tenant's data through `/api/platform/tenants/{id}/support/...`
-with a required `reason` (e.g. a ticket number). Reads are read-only at the
-database level, and every access is logged; the tenant sees the log at
-`GET /api/support-access/logs`.
-
-Every response carries an `X-Request-Id`; log lines include `req=`, `tenant=`
-and `user=` so a support ticket can be traced without opening tenant data.
-
-## Multi-tenancy
-
-The tenant comes only from the signed JWT (`tenant_id` claim), never from the
-request. Isolation is enforced centrally by Hibernate's `@TenantId`: every
-query on a tenant-owned entity is filtered by the current tenant, inserts are
-stamped with it, and with no tenant in context nothing matches (fail closed).
-Another tenant's id returns the same 404 as an id that doesn't exist.
-`TenantIsolationTests` checks read / list / update / delete across tenants.
-
-PostgreSQL is published on host port **5433** (not 5432) so it can run next
-to another local PostgreSQL. Override with `POSTGRES_PORT` / `DB_URL` in `.env`.
-
-### Run the whole stack with Docker
-
-```bash
-cp .env.example .env        # set JWT_SECRET (required), optionally ANTHROPIC_API_KEY etc.
-docker compose --profile app up --build
-curl localhost:8080/actuator/health
-```
-
-The `app` service only starts with `--profile app`; a plain `docker compose up -d`
-still runs just PostgreSQL for development in the IDE. Set `APP_PORT` if 8080 is
-taken. The image (`Dockerfile`) is a multi-stage build: JDK + Maven wrapper to
-build, JRE only to run, Spring Boot layers, non-root user. It has no `curl`, so
-there's no Docker `HEALTHCHECK`; platforms should probe
-`/actuator/health/liveness` and `/actuator/health/readiness`. CI builds the image
-after the tests pass (not pushed anywhere yet).
-
-### Docker via Colima (macOS)
-
-Testcontainers looks for `/var/run/docker.sock` by default. With Colima,
-point it at Colima's socket before running tests:
+Testcontainers looks for `/var/run/docker.sock`. With Colima:
 
 ```bash
 export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
@@ -190,21 +119,120 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 
 (Or put `docker.host=unix:///Users/<you>/.colima/default/docker.sock` in
 `~/.testcontainers.properties`.)
+</details>
 
-## Roadmap
+### Try it
 
-- [x] Step 0 — repo, agent guide (`CLAUDE.md`), PR template
-- [x] Step 1 — skeleton, Docker Compose, health endpoint, Testcontainers, CI
-- [x] Week 1 — tenants, users, JWT auth, centralized tenant filter, isolation tests
-- [x] Week 2 — customers, invoices, line items, tax, discount
-- [x] Week 3 — partial payments, invoice numbering, overdue job, summary
-- [x] Week 4 — AI draft extraction, troubleshooting write-ups
+In Swagger UI: `POST /api/tenants` (public) → `POST /api/auth/login` →
+**Authorize** with the `accessToken` → create a customer → create an invoice →
+issue it → record a payment → `GET /api/summary`.
+
+```bash
+curl -X POST localhost:8080/api/tenants -H 'Content-Type: application/json' \
+  -d '{"tenantName":"Toko Maju","tenantSlug":"toko-maju","adminEmail":"owner@tokomaju.test","adminPassword":"TokoMaju-123"}'
+curl -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"tenantSlug":"toko-maju","email":"owner@tokomaju.test","password":"TokoMaju-123"}'
+curl localhost:8080/api/me -H "Authorization: Bearer <accessToken>"
+```
+
+## API overview
+
+All endpoints need a tenant token unless marked public. Money is sent and
+returned as decimal strings. Errors are RFC 9457 `ProblemDetail`. Lists are paged
+(`page`, `size` ≤ 100).
+
+| Area | Endpoints | Notes |
+|---|---|---|
+| Sign-up & login | `POST /api/tenants` (public), `POST /api/auth/login` (public), `GET /api/me` | Login is tenant slug + email + password; signup can be turned off |
+| Users | `GET/POST /api/users`, `GET/PATCH/DELETE /api/users/{id}` | Writes ADMIN only; an admin can't demote or delete themselves |
+| Customers | `GET/POST /api/customers`, `GET/PUT/DELETE /api/customers/{id}`, `POST …/{id}/restore` | `q` search; delete = archive (ADMIN) |
+| Invoices | `GET/POST /api/invoices`, `GET/PUT/DELETE /api/invoices/{id}` | Drafts only for PUT/DELETE; totals always computed |
+| Issue / void | `POST /api/invoices/{id}/issue`, `POST /api/invoices/{id}/void` | Issue assigns `INV-<year>-NNNN`; void ADMIN only, keeps the number |
+| Payments | `GET/POST /api/invoices/{id}/payments` | Partial payments; PAID at zero balance; no overpayment |
+| Summary | `GET /api/summary?from=&to=` | Per currency: billed, paid, outstanding, overdue, counts |
+| AI drafts | `POST /api/invoices/ai-draft` | Returns a draft for review; nothing saved |
+| Support access | `GET/POST /api/support-access`, `DELETE …/{id}`, `GET …/logs` | Tenant ADMIN grants 1–72 h, revokes, audits |
+| Platform admin | `POST /api/platform/auth/login` (public), `GET/POST /api/platform/tenants`, `POST …/{id}/suspend`, `…/activate`, `GET …/{id}/support/{users,customers,invoices}` | Separate token type; support reads need a grant + `reason` |
+| Ops | `GET /actuator/health` (public), `/actuator/info`, `/actuator/prometheus` | Every response has `X-Request-Id` |
+
+## Configuration
+
+All configuration is environment variables (documented in
+[`.env.example`](.env.example)); no secrets in the repo.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `JWT_SECRET` | — (required) | HS256 signing key, ≥ 32 bytes; the app won't start without it |
+| `JWT_TTL` | `PT1H` | Access token lifetime |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | local compose DB | Database connection |
+| `POSTGRES_*`, `APP_PORT` | see `.env.example` | Docker Compose |
+| `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD` | empty | First platform admin, created at startup if both set (password 12–72 chars) |
+| `TENANT_SIGNUP_ENABLED` | `true` | Public tenant sign-up; `false` = only platform admins create tenants |
+| `OVERDUE_CRON`, `OVERDUE_ZONE` | `0 5 0 * * *`, `Asia/Jakarta` | Overdue job schedule (`-` disables) |
+| `ANTHROPIC_API_KEY` | empty | Enables AI drafts (503 without it) |
+| `AI_MODEL`, `AI_EFFORT` | `claude-opus-5-5`, `low` | Claude model and effort |
+| `SPRINGDOC_ENABLED` | `true` | Swagger UI / OpenAPI spec; set `false` in production |
+
+## How it works
+
+**Multi-tenancy.** The tenant comes only from the validated JWT's `tenant_id`
+claim, never from the request. `TenantContextFilter` puts it in a `ThreadLocal`
+and clears it in `finally`; Hibernate's `@TenantId` adds the tenant condition to
+every query (including `findById`) and stamps inserts. With no tenant in context
+nothing matches. Jobs and pre-authentication flows run inside
+`TenantContext.callAs(tenantId, …)`. A guard test fails the build if a table has
+an unindexed or nullable `tenant_id`, or an entity forgets `@TenantId`.
+
+**Invoices and money.** `InvoiceCalculator` computes subtotal → discount → tax
+on the discounted amount → total per line (HALF_UP, scale 2), and invoice totals
+as sums of the stored line amounts. Lifecycle: DRAFT → SENT → PAID, OVERDUE by a
+daily job, VOID for cancelled sent invoices; transitions are centralized in
+`InvoiceStatus`. Anything that changes an invoice's status or amounts locks the
+invoice row first.
+
+**Numbering.** Issuing locks the invoice, then the `(tenant, year)` counter
+(`SELECT … FOR UPDATE`, always in that order), increments it and marks the
+invoice SENT in one transaction: concurrent issues are serialized and a failure
+rolls the number back. Drafts have no number.
+
+**AI drafts.** The pasted text (and today's date, nothing else) goes to Claude
+with structured outputs constrained to
+[`ai/invoice-draft.schema.json`](src/main/resources/ai/invoice-draft.schema.json).
+The reply is parsed, validated against the same schema, then against the
+manual-entry line rules; failures are retried with the errors in the prompt (3
+attempts), then 502. The customer is matched locally by exact name within the
+tenant. The result has the shape of `POST /api/invoices`, so saving goes through
+the normal validation. Tests replace the model with a scripted fake.
+
+**Platform admin and support access.** The SaaS operator has its own account
+table, login and token (`scope=platform`, no `tenant_id`) on a separate security
+chain; tenant and platform tokens can't cross. Suspending a tenant blocks login
+and existing tokens immediately. Reading tenant data for support requires an
+active grant from the tenant's ADMIN, a reason, writes an audit log first, and
+runs in a read-only transaction (PostgreSQL rejects writes).
+
+## Testing
+
+```bash
+./mvnw verify           # Spotless + 181 tests on PostgreSQL in Testcontainers
+```
+
+- **Integration tests over real HTTP and PostgreSQL** (no H2, no mocked
+  database), one shared container per run.
+- **Isolation tests for every tenant-owned resource** (users, customers, invoices
+  and lines, payments, support grants/logs, summary): two real tenants, 404
+  bodies compared byte for byte, the other tenant's rows checked with JDBC below
+  the filter.
+- **Concurrency tests** with a latch so requests really race: parallel invoice
+  issuing (unique, gapless) and parallel payments (never overpaid).
+- **Unit tests** for money math, number format, status transitions, summary
+  aggregation, AI output validation.
+- **Mutation checks** (fix removed temporarily, test must fail): tenant filter
+  bypassed (7/7 isolation tests fail), tenant context not cleared, numbering lock
+  removed (duplicates), payment lock removed (lost update, 10/10 accepted).
+- **CI** (GitHub Actions): Spotless, `./mvnw verify`, then a Docker image build.
 
 ## Troubleshooting write-ups
-
-What went wrong (or could have), how it was designed out, and the tests that
-prove it, including mutation checks where the fix was removed to show the test
-fails:
 
 - [Preventing a cross-tenant data leak](docs/troubleshooting/cross-tenant-data-leak.md):
   `@TenantId` vs `@Filter` vs RLS, fail-closed tenant context, 404 not 403,
@@ -215,3 +243,52 @@ fails:
 - [Money precision and tax rounding](docs/troubleshooting/money-precision-and-rounding.md):
   `BigDecimal` end to end, HALF_UP per line then summed (and the case where it
   changes the total), money as JSON strings.
+
+## Built with an AI agent
+
+I worked with Claude Code as a pair: the agent follows [`CLAUDE.md`](CLAUDE.md)
+(non-negotiable rules for multi-tenancy, money, numbering, security and the AI
+feature), proposes a plan, and only codes after I approve or correct it. Each PR
+uses the [PR template](.github/pull_request_template.md): what I directed, what
+I corrected, how it was tested, and an explicit list of changes in the
+security-sensitive packages, which I review line by line.
+
+| PR | Change |
+|---|---|
+| [#1](https://github.com/dimas-nurfauzi/invoicing-saas/pull/1) | Skeleton: Spring Boot, PostgreSQL compose, Flyway, Testcontainers, CI |
+| [#2](https://github.com/dimas-nurfauzi/invoicing-saas/pull/2) | Tenant registration with the first ADMIN user |
+| [#3](https://github.com/dimas-nurfauzi/invoicing-saas/pull/3) | Stateless JWT auth and login |
+| [#4](https://github.com/dimas-nurfauzi/invoicing-saas/pull/4) | Centralized tenant filter (`@TenantId`), isolation tests, Swagger |
+| [#5](https://github.com/dimas-nurfauzi/invoicing-saas/pull/5) | Platform admin, tenant suspension, request ids |
+| [#6](https://github.com/dimas-nurfauzi/invoicing-saas/pull/6) | Tenant-granted, audited, read-only support access |
+| [#7](https://github.com/dimas-nurfauzi/invoicing-saas/pull/7) | Customer CRUD with archive, paging and search |
+| [#8](https://github.com/dimas-nurfauzi/invoicing-saas/pull/8) | Draft invoices with line items, tax and discount |
+| [#9](https://github.com/dimas-nurfauzi/invoicing-saas/pull/9) | Issue and void with gapless per-tenant numbering |
+| [#10](https://github.com/dimas-nurfauzi/invoicing-saas/pull/10) | Partial payments |
+| [#11](https://github.com/dimas-nurfauzi/invoicing-saas/pull/11) | Overdue job and per-currency summary |
+| [#12](https://github.com/dimas-nurfauzi/invoicing-saas/pull/12) | AI invoice drafts via Claude |
+| [#13](https://github.com/dimas-nurfauzi/invoicing-saas/pull/13) | Troubleshooting write-ups |
+| [#14](https://github.com/dimas-nurfauzi/invoicing-saas/pull/14) | Docker image, full-stack compose, image build in CI |
+| [#15](https://github.com/dimas-nurfauzi/invoicing-saas/pull/15) | Package structure by feature and kind |
+
+Some things that came from my side rather than the agent's plan: Swagger for
+manual testing; a platform admin for the app owner; support access so the dev
+team can debug client data without a back door; running manual checks in
+batches; the controller/service/dto/entity package split.
+
+## Limitations and next steps
+
+Deliberately out of the MVP:
+
+- No refresh tokens or logout; access tokens live 1 hour (a deleted user's token
+  works until it expires; a suspended tenant's tokens stop immediately).
+- No rate limiting yet on login, sign-up or the AI endpoint (cost control).
+- No self-service password change or reset, no email invitations.
+- Payments are append-only (no reversal or refund yet); no invoice-level discount.
+- No optimistic locking on customer edits (last write wins).
+- Single region, single instance assumed for the overdue job (safe but redundant
+  if several instances run it).
+- The AI feature has only been tested against a scripted model in CI.
+
+Next: deployment with a public demo, then a TypeScript frontend (React + Vite)
+focused on the AI draft review flow.
