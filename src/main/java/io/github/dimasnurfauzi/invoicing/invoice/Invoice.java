@@ -215,6 +215,11 @@ public class Invoice {
     }
   }
 
+  /** SENT → OVERDUE, by the overdue job. The caller holds the invoice row lock. */
+  void markOverdue() {
+    transitionTo(InvoiceStatus.OVERDUE);
+  }
+
   /** SENT/OVERDUE → VOID. The number stays used, so the sequence has no gaps. */
   void voidInvoice(String reason, Instant now) {
     transitionTo(InvoiceStatus.VOID);

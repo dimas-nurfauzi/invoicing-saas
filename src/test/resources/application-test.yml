@@ -1,5 +1,8 @@
 # Activated with @ActiveProfiles("test"). Test-only values; not secrets.
 app:
+  # Tests call OverdueInvoiceJob.markOverdue(date) directly; never on a schedule.
+  overdue:
+    cron: "-"
   jwt:
     secret: test-only-jwt-secret-0123456789abcdef0123456789
   platform-admin:

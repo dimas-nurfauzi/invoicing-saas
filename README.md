@@ -96,7 +96,16 @@ The invoice row is locked while a payment is recorded, so concurrent payments
 can't overpay. `GET /api/invoices/{id}/payments` lists them. Payments are
 append-only for now.
 
-Overdue tracking and the billing summary come next.
+## Overdue job and summary
+
+A daily job (`OVERDUE_CRON`, default 00:05 in `OVERDUE_ZONE`, default
+Asia/Jakarta) marks SENT invoices past their due date as OVERDUE. It runs per
+tenant through the normal tenant filter and locks the rows it changes, so a
+payment arriving at the same moment is never overwritten.
+
+`GET /api/summary?from=&to=` (optional issue-date range) returns, per currency:
+total billed, paid, outstanding and overdue, plus invoice counts per status.
+Drafts and voided invoices are not billed.
 
 ## Platform admin
 
@@ -154,8 +163,8 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 - [x] Step 0 — repo, agent guide (`CLAUDE.md`), PR template
 - [x] Step 1 — skeleton, Docker Compose, health endpoint, Testcontainers, CI
 - [x] Week 1 — tenants, users, JWT auth, centralized tenant filter, isolation tests
-- [ ] Week 2 — customers, invoices, line items, tax, discount
-- [ ] Week 3 — partial payments, invoice numbering, overdue job
+- [x] Week 2 — customers, invoices, line items, tax, discount
+- [x] Week 3 — partial payments, invoice numbering, overdue job, summary
 - [ ] Week 4 — AI draft extraction, troubleshooting write-ups
 
 ## Troubleshooting write-ups

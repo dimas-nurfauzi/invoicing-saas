@@ -1,6 +1,8 @@
 package io.github.dimasnurfauzi.invoicing.invoice;
 
 import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -29,4 +31,15 @@ public interface InvoiceRepository
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT i FROM Invoice i WHERE i.id = :id")
   Optional<Invoice> lockById(@Param("id") UUID id);
+
+  /**
+   * SENT invoices past their due date, locked ({@code FOR UPDATE}). Under READ COMMITTED,
+   * PostgreSQL re-checks the WHERE after waiting for a lock, so an invoice paid meanwhile (now
+   * PAID) drops out instead of being overwritten.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      "SELECT i FROM Invoice i WHERE i.status = io.github.dimasnurfauzi.invoicing.invoice"
+          + ".InvoiceStatus.SENT AND i.dueDate < :today ORDER BY i.dueDate, i.id")
+  List<Invoice> lockOverdueCandidates(@Param("today") LocalDate today, Pageable limit);
 }
